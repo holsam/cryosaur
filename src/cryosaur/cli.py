@@ -39,7 +39,7 @@ def logging_callback(
 ):
     # Check quiet and verbose haven't been supplied together
     if quiet and verbosity:
-        raise typer.BadParameter('-q/--quiet and -v/--verbose are incompatible')
+        raise typer.BadParameter('-q/--quiet and -v/--verbose are mutually exclusive.')
     # Configure logging
     log_path = configure_logging(directory=log_dir, mode=log_mode, quiet=quiet, verbosity=verbosity)
     # Output confirmation message that logging has been set up
