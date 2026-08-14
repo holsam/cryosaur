@@ -15,6 +15,7 @@ cryosaur = typer.Typer(
     add_completion=False,
     rich_markup_mode='rich',
     no_args_is_help=True,
+    help='🦖 Resources and scripts for investigating ultrastructure using [italic]in situ[/] cryoEM'
 )
 
 # -- Create callback to provide logging options and configure logging
@@ -34,12 +35,14 @@ def logging_callback(
     ] = False,
     verbosity: Annotated[
         int,
-        typer.Option('-v', '--verbose', max=3, clamp=True, count=True, help='Increase verbosity of logging.', show_default=False, rich_help_panel='Logging Options')
+        typer.Option('-v', '--verbose', count=True, help='Increase verbosity of logging.', show_default=False, rich_help_panel='Logging Options', metavar='')
     ] = 0,
 ):
     # Check quiet and verbose haven't been supplied together
     if quiet and verbosity:
         raise typer.BadParameter('-q/--quiet and -v/--verbose are mutually exclusive.')
+    # Clamp verbosity to 3
+    verbosity = 3 if verbosity > 3 else verbosity
     # Configure logging
     log_path = configure_logging(directory=log_dir, mode=log_mode, quiet=quiet, verbosity=verbosity)
     # Output confirmation message that logging has been set up
