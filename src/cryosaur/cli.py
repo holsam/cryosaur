@@ -8,14 +8,19 @@ from pathlib import Path
 from typing import Annotated, Literal
 
 # -- Import cryosaur utilities
+from cryosaur.utils.errors import handle_errors
 from cryosaur.utils.log import configure_logging, log
+from cryosaur.utils.cli.registry import registered_commands
+
+# -- Import cryosaur commands
+import cryosaur.commands
 
 # -- Initialise Typer class for cryosaur CLI
 cryosaur = typer.Typer(
     add_completion=False,
     rich_markup_mode='rich',
     no_args_is_help=True,
-    help='🦖 Resources and scripts for investigating ultrastructure using [italic]in situ[/] cryoEM'
+    help='Resources and scripts for investigating ultrastructure using [italic]in situ[/] cryoEM 🦖'
 )
 
 # -- Create callback to provide logging options and configure logging
@@ -47,3 +52,16 @@ def logging_callback(
     log_path = configure_logging(directory=log_dir, mode=log_mode, quiet=quiet, verbosity=verbosity)
     # Output confirmation message that logging has been set up
     log.info(f'Log messages will be {"appended" if log_mode == 'append' else "written"} to <cyan>{log_path}</cyan>')
+
+# -- Attach every registered command onto the main Typer app, grouping any with a `group` set under their own nested Typer app
+_group_apps: dict[str, typer.Typer] = {}
+
+for _name, _registered in registered_commands().items():
+    _wrapped = handle_errors(_registered.func)
+    if _registered.group is None:
+        cryosaur.command(name=_name, hidden=_registered.hidden)(_wrapped)
+    else:
+        if _registered.group not in _group_apps:
+            _group_apps[_registered.group] = typer.Typer(no_args_is_help=True)
+            cryosaur.add_typer(_group_apps[_registered.group], name=_registered.group)
+        _group_apps[_registered.group].command(name=_name, hidden=_registered.hidden)(_wrapped)
