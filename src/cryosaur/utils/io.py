@@ -29,3 +29,19 @@ def _next_available_path(path: Path) -> Path:
         if not candidate.exists():
             return candidate
         counter += 1
+
+# -- _find_files_by_extension: returns a list of Paths corresponding to files matching a given pattern
+def _find_files_by_pattern(input_dir, pattern: str, recursive: bool = True):
+    '''
+    Find input files matching pattern within input_dir, recursing into subdirectories wher recursive=True
+    '''
+    glob = input_dir.rglob if recursive else input_dir.glob
+    return sorted(p for p in glob(pattern))
+
+# -- _find_files_by_extension: returns a list of Paths corresponding to files matching a given extension
+def _find_files_by_extension(input_dir, extension: str, recursive: bool = True):
+    '''
+    Find input files with the extension '.extension' under input_dir, recursing into subdirectories when recursive=True
+    '''
+    extension = f'*{extension}' if extension.startswith('.') else f'*.{extension}'
+    return _find_files_by_pattern(input_dir, extension, recursive)
