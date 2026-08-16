@@ -53,6 +53,12 @@ def logging_callback(
     # Output confirmation message that logging has been set up
     log.info(f'Log messages will be {"appended" if log_mode == 'append' else "written"} to <cyan>{log_path}</cyan>')
 
+# -- _GROUP_HELP: dictionary containing help text for any sub-Typers 
+_GROUP_HELP = {
+    'utils': 'Misc cryosaur utilities.',
+    'internal': 'Internal cryosaur commands.',
+}
+
 # -- Attach every registered command onto the main Typer app, grouping any with a `group` set under their own nested Typer app
 _group_apps: dict[str, typer.Typer] = {}
 
@@ -63,5 +69,5 @@ for _name, _registered in registered_commands().items():
     else:
         if _registered.group not in _group_apps:
             _group_apps[_registered.group] = typer.Typer(no_args_is_help=True)
-            cryosaur.add_typer(_group_apps[_registered.group], name=_registered.group)
+            cryosaur.add_typer(_group_apps[_registered.group], name=_registered.group, help=_GROUP_HELP.get(_registered.group, ''))
         _group_apps[_registered.group].command(name=_name, hidden=_registered.hidden)(_wrapped)
