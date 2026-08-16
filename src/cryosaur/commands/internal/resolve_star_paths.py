@@ -38,7 +38,7 @@ def resolve_star_path(fork_dir: Path, job_star_path: Path) -> None:
 
 
 # -- resolve_star_path_command: CLI entry point under utils command
-@register('resolve-star-paths', group='utils')
+@register('resolve-star-paths', group='internal')
 def resolve_star_path_command(
     fork_dir: Annotated[Path, typer.Option('--fork-dir', help='The fork project directory.')],
     job_star: Annotated[Path, typer.Option('--job-star', help='The staged job.star to resolve in place.')],
