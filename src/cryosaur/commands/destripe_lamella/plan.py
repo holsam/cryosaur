@@ -55,7 +55,7 @@ def _stage_relion_job(
     staged_path = fork_dir / 'cryosaur' / 'staged' / f'{step_name}.star'
     write_job_star(relion_job_type, options, staged_path, is_tomo=is_tomo)
     return [
-        f'cryosaur resolve-star-path --fork-dir {fork_dir} --job-star {staged_path}',
+        f'cryosaur internal resolve-star-path --fork-dir {fork_dir} --job-star {staged_path}',
         f'cd {fork_dir} && pipeliner --run_job {staged_path.relative_to(fork_dir)}',
     ]
 
@@ -103,8 +103,7 @@ def build_plan(source_project: Path, fork_dir: Path) -> RunPlan:
     micrograph_dirs = {str(Path(path).parent) for _, path in micrograph_pairs}
     if len(micrograph_dirs) != 1:
         raise ValueError(
-            f'Expected all source micrographs to share one parent directory for a '
-            f'single pylisc frames call, found {len(micrograph_dirs)}: {micrograph_dirs}'
+            f'Expected all source micrographs to share one parent directory for a single pylisc frames call, found {len(micrograph_dirs)}: {micrograph_dirs}'
         )
     destripe_input_dir = source_project / micrograph_dirs.pop()
 
