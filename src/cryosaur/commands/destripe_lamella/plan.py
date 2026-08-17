@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 # -- Import cryosaur utilities
-from cryosaur.commands.destripe_lamella.bridge import build_bridging_star, parse_star_loop
+from cryosaur.commands.destripe_lamella.bridge import build_bridging_star, parse_tilt_series_star_loop
 from cryosaur.utils.relion_adapter.job_star import extract_relion_headers, read_job_options, write_job_star
 from cryosaur.utils.relion_adapter.lineage import build_lineage, write_lineage
 from cryosaur.utils.relion_adapter.pipeline_graph import PipelineGraph
@@ -63,7 +63,7 @@ def _stage_relion_job(
 def _read_source_alignment(
     source_project: Path, aligned_tilt_series: Path
 ) -> tuple[list[str], list[tuple[str, str]]]:
-    top_columns, top_rows = parse_star_loop(aligned_tilt_series)
+    top_columns, top_rows = parse_tilt_series_star_loop(aligned_tilt_series)
     name_column = top_columns.index('rlnTomoName')
     star_file_column = top_columns.index('rlnTomoTiltSeriesStarFile')
 
@@ -72,7 +72,7 @@ def _read_source_alignment(
     for row in top_rows:
         tomo_name = row[name_column]
         tomogram_names.append(tomo_name)
-        columns, rows = parse_star_loop(source_project / row[star_file_column])
+        columns, rows = parse_tilt_series_star_loop(source_project / row[star_file_column])
         micrograph_column = columns.index('rlnMicrographName')
         for tilt_row in rows:
             micrograph_pairs.append((tomo_name, tilt_row[micrograph_column]))
