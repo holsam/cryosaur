@@ -26,7 +26,20 @@ _BASELINE_RESOURCES = SlurmResourceProfile(
     cpus_per_task=40,
     mem_per_gpu='32000M',
     time='72:00:00',
-    modules=['EM/relion'],
+    modules=[
+        'cuda/12.2',
+        'EM/AreTomo2/2024-09-05',
+        'EM/cryocare/0.3.0',
+        'EM/ctffind/4.1.14-rhel8',
+        'EM/Gctf/1.18',
+        'EM/icebreaker/0.3.5',
+        'EM/MotionCor2/1.6.3',
+        'EM/relion/5.0/2024-12-09',
+        'fftw/3.3.8',
+        'gcc/11.2.0',
+        'hwloc/2.10.0',
+        'openmpi/4.1.2',
+    ],
 )
 
 _RESOLVE_TOKEN = '{{{{resolve:{job_type}}}}}'
