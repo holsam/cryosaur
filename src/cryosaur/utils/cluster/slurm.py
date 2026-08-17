@@ -63,3 +63,24 @@ class SlurmBackend(SchedulerBackend):
         if not match:
             raise CryosaurError(f'Could not parse job id from sbatch output: {result.stdout!r}')
         return match.group(1)
+
+# -- _default_slurm_cpu_resources: CPU-only work, no GPU
+def _default_slurm_cpu_resources(job_name: str) -> SlurmResourceProfile:
+    return SlurmResourceProfile(
+        name=job_name,
+        partition='cs05r',
+        cpus_per_task=4,
+        mem='16G',
+        time='04:00:00',
+    )
+
+# -- _default_slurm_gpu_resources: GPU-required work
+def _default_slurm_gpu_resources(job_name: str) -> SlurmResourceProfile:
+    return SlurmResourceProfile(
+        name=job_name,
+        gpus=1,
+        partition='cs05r',
+        cpus_per_task=16,
+        mem_per_gpu='32G',
+        time='24:00:00',
+    )
