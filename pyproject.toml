@@ -1,6 +1,6 @@
 [project]
 name = "cryosaur"
-version = "0.1.1"
+version = "0.2.0"
 description = "Resources and scripts for investigating ultrastructure using in situ cryoEM"
 readme = "README.md"
 authors = [
