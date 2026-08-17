@@ -12,10 +12,6 @@ def validate(plan: RunPlan) -> list[str]:
     if not plan.source_project.exists():
         problems.append(f'Source project no longer exists at {plan.source_project}')
 
-    destripe_step = plan.step('destripe')
-    if not destripe_step.array_over:
-        problems.append('destripe step has no tomograms to process - array_over is empty')
-
     staged_dir = plan.fork_dir / 'cryosaur' / 'staged'
     for step in plan.steps:
         if step.kind == 'relion':
