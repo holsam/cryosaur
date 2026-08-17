@@ -22,10 +22,11 @@ PROGRESS_LEVEL = 'PROGRESS'
 
 # -- Define dictionary to map verbosity values to levels
 VERBOSITY_TO_LEVEL = {
-    0: 'WARNING',
-    1: 'INFO',
-    2: PROGRESS_LEVEL,
-    3: 'DEBUG'
+    0: 'ERROR',
+    1: 'WARNING',
+    2: 'INFO',
+    3: PROGRESS_LEVEL,
+    4: 'DEBUG'
 }
 
 # -- _CryosaurLogger: class for logger, which proxies standard log methods through opt(colours=True) so messages don't have to include every time
@@ -112,10 +113,9 @@ def register_custom_levels() -> None:
             pass
 
 # -- resolve_level: returns string corresponding to resolved log level to use from verbosity and quiet arguments
-def resolve_level(verbosity: int, quiet: bool) -> str:
-    if quiet:
-        return 'ERROR'
-    return VERBOSITY_TO_LEVEL[verbosity]
+def resolve_level(verbosity: int, quiet: int) -> str:
+    resolved_verbosity = 2 + verbosity - quiet
+    return VERBOSITY_TO_LEVEL[resolved_verbosity]
 
 # -- build_level_filter: returns functions _filter to use as loguru sink filter, which enforces specified level while always allowing INPUT-level messages
 def build_level_filter(level_name: str):
@@ -173,7 +173,7 @@ def resolve_log_path(
 def configure_logging(
     directory: Path | None,
     mode: str,
-    quiet: bool,
+    quiet: int,
     verbosity: int,
 ) -> Path:
     register_custom_levels()
