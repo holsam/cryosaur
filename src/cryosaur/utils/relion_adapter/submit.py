@@ -55,6 +55,8 @@ def render_single_job_script(steps: list[PlannedStep]) -> str:
     lines.append(f'#SBATCH --cpus-per-task={resources.cpus_per_task}')
     if resources.mem_per_gpu:
         lines.append(f'#SBATCH --mem-per-gpu={resources.mem_per_gpu}')
+    elif resources.mem_per_cpu:
+        lines.append(f'#SBATCH --mem-per-cpu={resources.mem_per_cpu}')
     elif resources.mem:
         lines.append(f'#SBATCH --mem={resources.mem}')
     lines.append('')

@@ -25,6 +25,7 @@ _env = Environment(
 class SlurmResourceProfile(ResourceProfile):
     partition: str
     gpus: int = 0
+    mem: str | None = None
     mem_per_cpu: str | None = None
     mem_per_gpu: str | None = None
 

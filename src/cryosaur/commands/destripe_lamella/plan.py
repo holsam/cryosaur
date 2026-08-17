@@ -133,7 +133,7 @@ def build_plan(source_project: Path, fork_dir: Path) -> RunPlan:
         array_over=None,  # pylisc frames processes the whole directory in one call
         commands=_destripe_commands(destripe_input_dir, destripe_output_dir),
         expected_outputs=[fork_dir / p for p in destriped_micrograph_for.values()],
-        resources=_BASELINE_RESOURCES.model_copy(update={'gpus': 0, 'cpus_per_task': 8}),
+        resources=_BASELINE_RESOURCES.model_copy(update={'gpus': 0, 'cpus_per_task': 8, 'mem_per_gpu': None, 'mem_per_cpu': '4000M'}),
     )
 
     # bridging STAR
