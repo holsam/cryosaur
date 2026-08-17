@@ -45,3 +45,15 @@ def _find_files_by_extension(input_dir, extension: str, recursive: bool = True):
     '''
     extension = f'*{extension}' if extension.startswith('.') else f'*.{extension}'
     return _find_files_by_pattern(input_dir, extension, recursive)
+
+# -- _resolve_input_paths: expands a file-or-directory argument to a sorted list of paths with given extension
+def _resolve_input_paths(input_path: Path, extension: str) -> list[Path]:
+    from cryosaur.utils.errors import CryosaurError
+    if input_path.is_file():
+        return [input_path]
+    if input_path.is_dir():
+        paths = _find_files_by_extension(input_dir=input_path, extension=extension)
+        if not paths:
+            raise CryosaurError(f'No <cyan>.{extension.lower()}</cyan> files found in <cyan>{input_path}</cyan>')
+        return paths
+    raise CryosaurError(f'<cyan>{input_path}</cyan> is neither a file nor a directory')

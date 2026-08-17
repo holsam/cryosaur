@@ -1,6 +1,6 @@
 [project]
 name = "cryosaur"
-version = "0.1.1"
+version = "0.2.0"
 description = "Resources and scripts for investigating ultrastructure using in situ cryoEM"
 readme = "README.md"
 authors = [
@@ -10,6 +10,8 @@ requires-python = ">=3.14"
 dependencies = [
     "jinja2>=3.1.6",
     "loguru>=0.7.3",
+    "mrcfile>=1.5.4",
+    "pillow>=12.3.0",
     "pydantic>=2.13.4",
     "starfile>=0.5.13",
     "typer>=0.27.1",

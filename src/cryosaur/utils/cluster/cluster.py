@@ -8,19 +8,32 @@ from typing import Optional
 
 # -- Import internal cryosaur utilities
 from cryosaur.utils.cluster.base import SchedulerBackend
-from cryosaur.utils.cluster.slurm import SlurmBackend
+from cryosaur.utils.cluster.slurm import SlurmBackend, _default_slurm_cpu_resources, _default_slurm_gpu_resources
 from cryosaur.utils.cluster.status import ClusterStatus
-from cryosaur.utils.errors import CryosaurError  # NOTE: adjust to actual location
-from cryosaur.utils.log import log  # NOTE: adjust to actual location
+from cryosaur.utils.errors import CryosaurError
+from cryosaur.utils.log import log
 
 # -- _BACKENDS: registry containing all known scheduler backends
 _BACKENDS: dict[str, SchedulerBackend] = {
     'slurm': SlurmBackend(),
 }
 
+# -- _DEFAULT_RESOURCE_FACTORIES: one default-resource builder per registered scheduler backend
+_DEFAULT_RESOURCE_FACTORIES: dict[str, Callable[[str], ResourceProfile]] = {
+    'slurm_cpu': _default_slurm_cpu_resources,
+    'slurm_gpu': _default_slurm_gpu_resources,
+}
+
 # -- get_backend: looks up a registered scheduler backend by name
 def get_backend(scheduler: str) -> SchedulerBackend | None:
     return _BACKENDS.get(scheduler)
+
+# -- default_resources: looks up the default resource profile for a resources_id, raising if none is known
+def default_resources(resources_id: str, job_name: str) -> ResourceProfile:
+    factory = _DEFAULT_RESOURCE_FACTORIES.get(resources_id)
+    if factory is None:
+        raise CryosaurError(f'No default resource profile for scheduler {resources_id!r}; pass resources explicitly.')
+    return factory(job_name)
 
 # -- check_cluster: returns ClusterStatus corresponding to current state
 def check_cluster(scheduler: Optional[str] = None) -> ClusterStatus:
