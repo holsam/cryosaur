@@ -8,8 +8,8 @@ from pathlib import Path
 from typing import Annotated
 
 # -- Import cryosaur utilities
-from cryosaur.commands.trim.pipeline import run_trim_pipeline
-from cryosaur.commands.trim.preview import build_preview
+from cryosaur.commands.trim_vol.pipeline import run_trim_pipeline
+from cryosaur.commands.trim_vol.preview import build_preview
 from cryosaur.utils.cli.registry import register
 from cryosaur.utils.errors import CryosaurError, handle_errors
 from cryosaur.utils.io import _resolve_input_paths
