@@ -1,5 +1,5 @@
 '''
-CRYOSAUR: trim pipeline
+CRYOSAUR: volume trimming pipeline
 '''
 
 # -- Import external dependencies
