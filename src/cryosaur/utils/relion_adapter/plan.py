@@ -10,7 +10,7 @@ from typing import Literal
 
 # -- Import cryosaur utilities
 from cryosaur.utils.errors import CryosaurError
-from cryosaur.utils.slurm import SlurmResourceProfile
+from cryosaur.utils.cluster.slurm import SlurmResourceProfile
 
 # -- BridgingContract: declares which parts of the source project's tilt series metadata a command's steps leave unchanged
 class BridgingContract(BaseModel):
