@@ -86,6 +86,9 @@ def trim_command(
         typer.Option('--output-dir', help='Path to directory to write trimmed output(s) to (derived from the input path if omitted).'),
     ] = None,
 ) -> None:
+    '''
+    Automatically trim tomogram volumes using IMOD.
+    '''
     mrc_paths = _resolve_input_paths(input_path, 'mrc')
     resolved_output_dir = output_dir or input_path.parent
     log.info(f'trim-vol: {len(mrc_paths)} file(s) to process')
