@@ -58,6 +58,7 @@ def logging_callback(
 _GROUP_HELP = {
     'utils': 'Misc cryosaur utilities.',
     'internal': 'Internal cryosaur commands.',
+    'config': 'Manage the cryosaur configuration file.',
 }
 
 # -- Attach every registered command onto the main Typer app, grouping any with a `group` set under their own nested Typer app

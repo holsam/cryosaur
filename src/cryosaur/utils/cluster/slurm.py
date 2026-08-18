@@ -46,9 +46,9 @@ class SlurmBackend(SchedulerBackend):
     def in_job(self) -> bool:
         return 'SLURM_JOB_ID' in os.environ
 
-    def render_script(self, resources: SlurmResourceProfile, command: str, log_path: Path) -> str:
+    def render_script(self, resources: SlurmResourceProfile, commands: list[str], log_path: Path, *, array_over: list | None = None) -> str:
         template = _env.get_template('slurm_script.sh.j2')
-        return template.render(resources=resources, command=command, log_path=log_path)
+        return template.render(resources=resources, commands=commands, log_path=log_path, array_over=array_over)
 
     # -- submit: runs sbatch on a rendered script and returns the job id
     def submit(self, script_path: Path) -> str:

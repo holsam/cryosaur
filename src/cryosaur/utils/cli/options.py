@@ -42,3 +42,9 @@ OnlyStepOption = Annotated[
     str | None,
     typer.Option('--only', help='Re-submit just this step, using the existing plan.', show_default=False, rich_help_panel='Pipeline Options'),
 ]
+
+# -- ClusterResourcesOption: option expecting string or None
+ClusterResourcesOption = Annotated[
+    str | None,
+    typer.Option('--cluster-resources', help="Use a [cluster.resources.<id>] profile instead of the config's default resources.", show_default=False, rich_help_panel='Pipeline Options'),
+]

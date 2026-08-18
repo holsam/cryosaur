@@ -34,7 +34,7 @@ class SchedulerBackend(ABC):
         '''Return True if currently running inside a job (i.e. interactive/submitted job and not a login node)'''
 
     @abstractmethod
-    def render_script(self, resources: ResourceProfile, command: str, log_path: Path) -> str:
+    def render_script(self, resources: ResourceProfile, commands: list[str], log_path: Path, *, array_over: list | None = None) -> str:
         '''Render a submission script for this scheduler'''
 
     @abstractmethod
@@ -42,9 +42,9 @@ class SchedulerBackend(ABC):
         '''Submit a rendered script and return the scheduler-assigned job id'''
 
     # -- write_script: renders and writes a script to disk, returning its path
-    def write_script(self, resources: ResourceProfile, command: str, script_path: Path, log_path: Path) -> Path:
+    def write_script(self, resources: ResourceProfile, commands: list[str], script_path: Path, log_path: Path, *, array_over: list | None = None) -> Path:
         script_path.parent.mkdir(parents=True, exist_ok=True)
-        script_path.write_text(self.render_script(resources, command, log_path))
+        script_path.write_text(self.render_script(resources, commands, log_path, array_over=array_over))
         return script_path
 
     # -- check: returns this backend's current ClusterStatus

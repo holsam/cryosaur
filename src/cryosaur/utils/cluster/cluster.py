@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Callable, Optional
 
 # -- Import internal cryosaur utilities
-from cryosaur.utils.cluster.base import SchedulerBackend
+from cryosaur.utils.cluster.base import ResourceProfile, SchedulerBackend
 from cryosaur.utils.cluster.slurm import SlurmBackend, _default_slurm_cpu_resources, _default_slurm_gpu_resources
 from cryosaur.utils.cluster.status import ClusterStatus
 from cryosaur.utils.errors import CryosaurError
@@ -19,6 +19,7 @@ _BACKENDS: dict[str, SchedulerBackend] = {
 }
 
 # -- _DEFAULT_RESOURCE_FACTORIES: one default-resource builder per registered scheduler backend
+_DEFAULT_RESOURCE_FACTORIES_KEYS = ('slurm_cpu', 'slurm_gpu')
 _DEFAULT_RESOURCE_FACTORIES: dict[str, Callable[[str], ResourceProfile]] = {
     'slurm_cpu': _default_slurm_cpu_resources,
     'slurm_gpu': _default_slurm_gpu_resources,

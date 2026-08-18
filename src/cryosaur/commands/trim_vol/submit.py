@@ -4,12 +4,10 @@ CRYOSAUR: submission for the trim-vol command
 
 # -- Import external dependencies
 from pathlib import Path
-from typing import Callable
 
 # -- Import cryosaur utilities
-from cryosaur.utils.cluster.base import ResourceProfile
-from cryosaur.utils.cluster.cluster import build_cryosaur_command, default_resources, get_backend
-from cryosaur.utils.cluster.slurm import SlurmResourceProfile
+from cryosaur.utils.cluster.cluster import build_cryosaur_command, get_backend
+from cryosaur.utils.config import load_config, resolve_resources
 from cryosaur.utils.errors import CryosaurError
 from cryosaur.utils.log import log
 
@@ -21,7 +19,7 @@ def build_submission_script(
     lowpass_sigma: float,
     lowpass_units: int,
     scheduler: str,
-    resources: ResourceProfile | None = None,
+    cluster_resources: str | None = None,
 ) -> Path:
     backend = get_backend(scheduler.lower())
     if backend is None:
@@ -37,9 +35,10 @@ def build_submission_script(
         output_dir=str(output_dir),
     )
 
+    resources = resolve_resources(load_config(), cluster_resources).model_copy(update={'name': job_name})
     script_path = output_dir / f'{mrc_path.stem}_trim.sbatch'
     log_path = output_dir / f'{mrc_path.stem}_trim.log'
-    backend.write_script(resources or default_resources(f'{scheduler.lower()}_cpu', job_name), command, script_path, log_path)
+    backend.write_script(resources, [command], script_path, log_path)
     return script_path
 
 # -- submit_job: submits a written script via the named scheduler backend, returning the job id
