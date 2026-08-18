@@ -19,6 +19,7 @@ _BACKENDS: dict[str, SchedulerBackend] = {
 }
 
 # -- _DEFAULT_RESOURCE_FACTORIES: one default-resource builder per registered scheduler backend
+_DEFAULT_RESOURCE_FACTORIES_KEYS = ('slurm_cpu', 'slurm_gpu')
 _DEFAULT_RESOURCE_FACTORIES: dict[str, Callable[[str], ResourceProfile]] = {
     'slurm_cpu': _default_slurm_cpu_resources,
     'slurm_gpu': _default_slurm_gpu_resources,
