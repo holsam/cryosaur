@@ -1,6 +1,6 @@
 #!/bin/bash
+#SBATCH --job-name={{ resources.name }}
 #SBATCH -p {{ resources.partition }}
-#SBATCH -J "{{ step.name }}"
 #SBATCH -t {{ resources.time }}
 #SBATCH --nodes={{ resources.nodes }}
 #SBATCH --ntasks={{ resources.ntasks }}
@@ -15,14 +15,17 @@
 {% elif resources.mem -%}
 #SBATCH --mem={{ resources.mem }}
 {% endif -%}
-{% if step.array_over -%}
-#SBATCH --array=0-{{ (step.array_over | length) - 1 }}
-{% endif %}
-
+{% if array_over -%}
+#SBATCH --array=0-{{ (array_over | length) - 1 }}
+{% endif -%}
+#SBATCH --output={{ log_path }}.out
+#SBATCH --error={{ log_path }}.err
+ 
 {% for module in resources.modules -%}
 module load {{ module }}
 {% endfor %}
+{{ command }}
 
-{% for command in step.commands %}
+{% for command in commands %}
 {{ command }}
 {% endfor %}
