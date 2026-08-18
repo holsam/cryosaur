@@ -13,7 +13,7 @@ from cryosaur.utils.cluster.cluster import get_backend
 from cryosaur.utils.errors import CryosaurError
 
 # -- CONFIG_DIR: location of directory for config files
-CONFIG_DIR = typer.get_app_dir('cryosaur')
+CONFIG_DIR = Path(typer.get_app_dir('cryosaur'))
 # -- CONFIG_PATH: location of cryosaur config file
 CONFIG_PATH = CONFIG_DIR / 'config.toml'
 
