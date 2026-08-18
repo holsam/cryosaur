@@ -13,6 +13,7 @@ dependencies = [
     "mrcfile>=1.5.4",
     "pillow>=12.3.0",
     "pydantic>=2.13.4",
+    "rich>=15.0.0",
     "starfile>=0.5.13",
     "typer>=0.27.1",
 ]
