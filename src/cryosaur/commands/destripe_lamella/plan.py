@@ -70,7 +70,8 @@ def _stage_relion_job(
     staged_path = fork_dir / 'cryosaur' / 'staged' / f'{step_name}.star'
     write_job_star(relion_job_type, options, staged_path, is_tomo=is_tomo)
     return [
-        f'cryosaur internal resolve-star-paths --fork-dir {fork_dir} --job-star {staged_path}',
+        f'cd {fork_dir} && [ -f default_pipeline.star ] || pipeliner --new_project',
+        f'cryosaur resolve-star-path --fork-dir {fork_dir} --job-star {staged_path}',
         f'cd {fork_dir} && pipeliner --run_job {staged_path.relative_to(fork_dir)}',
     ]
 
