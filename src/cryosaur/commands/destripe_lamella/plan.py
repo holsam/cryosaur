@@ -54,7 +54,7 @@ _DESTRIPE_SUFFIX = '_destriped'      # cryosaur's own preferred naming, applied 
 # -- _destripe_commands: runs pylisc over the whole input directory in one call, then renames every output file (.mrc and any accompanying files, e.g. .log) from pylisc's hardcoded _PyLisC_angular suffix to cryosaur's own _destriped suffix
 def _destripe_commands(input_dir: Path, output_dir: Path) -> list[str]:
     pylisc_command = (
-        f'pylisc frames --output-dir {output_dir} '
+        f'pylisc frames --workers {8} --output-dir {output_dir} '
         f"--filename-template '{_FILENAME_TEMPLATE}' {input_dir}"
     )
     rename_command = (
