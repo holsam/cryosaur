@@ -4,7 +4,7 @@ CRYOSAUR: cluster/scheduler detection and command building
 
 # -- Import external dependencies
 from pathlib import Path
-from typing import Optional
+from typing import Callable, Optional
 
 # -- Import internal cryosaur utilities
 from cryosaur.utils.cluster.base import SchedulerBackend
