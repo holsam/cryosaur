@@ -2,10 +2,14 @@
 CRYOSAUR: `destripe-lamella` command CLI
 '''
 
+# -- Import external dependencies
+from functools import partial
+
 # -- Import cryosaur utilities
 from cryosaur.commands.destripe_lamella.plan import build_plan
 from cryosaur.commands.destripe_lamella.validate import validate
 from cryosaur.utils.cli.options import (
+    ClusterResourcesOption,
     DryRunOption,
     ForkDirOption,
     FromStepOption,
@@ -33,13 +37,14 @@ def destripe_lamella_command(
     single_job: SingleJobOption = False,
     from_step: FromStepOption = None,
     only_step: OnlyStepOption = None,
+    cluster_resources: ClusterResourcesOption = None,
 ) -> None:
     '''
     Destripe per-tilt micrographs then reconstruct, denoise and segment using an existing alignment.
     '''
     run_command(
         derive_fork_dir=derive_fork_dir,
-        build_plan=build_plan,
+        build_plan=partial(build_plan, cluster_resources=cluster_resources),
         validate=validate,
         write_plan=write_plan,
         read_plan=read_plan,

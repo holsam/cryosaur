@@ -8,41 +8,17 @@ from pathlib import Path
 
 # -- Import cryosaur utilities
 from cryosaur.commands.destripe_lamella.bridge import build_bridging_star, parse_tilt_series_star_loop
+from cryosaur.utils.config import load_config, resolve_resources
 from cryosaur.utils.relion_adapter.job_star import extract_relion_headers, read_job_options, write_job_star
 from cryosaur.utils.relion_adapter.lineage import build_lineage, write_lineage
 from cryosaur.utils.relion_adapter.pipeline_graph import PipelineGraph
-from cryosaur.utils.relion_adapter.plan import BridgingContract, PlannedStep, RunPlan, SlurmResourceProfile
+from cryosaur.utils.relion_adapter.plan import BridgingContract, PlannedStep, RunPlan
 from cryosaur.utils.relion_adapter.rerun import STEP_JOB_TYPES
 
 # -- Map step name to job type for reruns
 STEP_JOB_TYPES['reconstruct'] = 'relion.reconstructtomograms'
 STEP_JOB_TYPES['denoise'] = 'relion.denoisetomo'
 STEP_JOB_TYPES['segment'] = 'membrain.segment'
-
-_BASELINE_RESOURCES = SlurmResourceProfile(
-    partition='cs05r',
-    gpus=4,
-    ntasks=1,
-    cpus_per_task=40,
-    mem_per_gpu='32000M',
-    time='72:00:00',
-    modules=[
-        'cuda/12.2',
-        'EM/AreTomo2/2024-09-05',
-        'EM/cryocare/0.3.0',
-        'EM/ctffind/4.1.14-rhel8',
-        'EM/Gctf/1.18',
-        'EM/icebreaker/0.3.5',
-        'EM/membrain-seg',
-        'EM/MotionCor2/1.6.3',
-        'EM/relion/5.0/2024-12-09',
-        'EM/topaz',
-        'fftw/3.3.8',
-        'gcc/11.2.0',
-        'hwloc/2.10.0',
-        'openmpi/4.1.2',
-    ],
-)
 
 _RESOLVE_TOKEN = '{{{{resolve:{job_type}}}}}'
 
@@ -96,7 +72,8 @@ def _read_source_alignment(
     return tomogram_names, micrograph_pairs
 
 # -- build_plan: reads source_project, plans a destripe-lamella branch into fork_dir, and returns the RunPlan
-def build_plan(source_project: Path, fork_dir: Path) -> RunPlan:
+def build_plan(source_project: Path, fork_dir: Path, *, cluster_resources: str | None = None) -> RunPlan:
+    baseline_resources = resolve_resources(load_config(), cluster_resources)
     graph = PipelineGraph.from_star(source_project)
     headers = extract_relion_headers(source_project / 'default_pipeline.star')
 
@@ -136,7 +113,7 @@ def build_plan(source_project: Path, fork_dir: Path) -> RunPlan:
         array_over=None,  # pylisc frames processes the whole directory in one call
         commands=_destripe_commands(destripe_input_dir, destripe_output_dir),
         expected_outputs=[fork_dir / p for p in destriped_micrograph_for.values()],
-        resources=_BASELINE_RESOURCES.model_copy(update={'gpus': 0, 'cpus_per_task': 8, 'mem_per_gpu': None, 'mem_per_cpu': '4000M'}),
+        resources=baseline_resources.model_copy(update={'gpus': 0, 'cpus_per_task': 12, 'mem_per_gpu': None, 'mem_per_cpu': '4000M'})
     )
 
     # bridging STAR
@@ -167,7 +144,7 @@ def build_plan(source_project: Path, fork_dir: Path) -> RunPlan:
         depends_on=['destripe'],
         commands=reconstruct_commands,
         expected_outputs=[],  # not knowable until pipeliner runs it - see rerun.py
-        resources=_BASELINE_RESOURCES.model_copy(update={'gpus': 0, 'mem_per_gpu': None, 'mem': '16G'}),
+        resources=baseline_resources.model_copy(update={'gpus': 4, 'mem_per_gpu': '32G', 'mem': None}),
     )
 
     # -- denoise
@@ -184,7 +161,7 @@ def build_plan(source_project: Path, fork_dir: Path) -> RunPlan:
         depends_on=['reconstruct'],
         commands=denoise_commands,
         expected_outputs=[],
-        resources=_BASELINE_RESOURCES.model_copy(update={'gpus': 1, 'mem_per_gpu': None, 'mem': '16G'}),
+        resources=baseline_resources.model_copy(update={'gpus': 4, 'mem_per_gpu': '32G', 'mem': None}),
     )
 
     # -- segment
@@ -201,7 +178,7 @@ def build_plan(source_project: Path, fork_dir: Path) -> RunPlan:
         depends_on=['denoise'],
         commands=segment_commands,
         expected_outputs=[],
-        resources=_BASELINE_RESOURCES.model_copy(update={'gpus': 1, 'mem_per_gpu': None, 'mem': '16G'}),
+        resources=baseline_resources.model_copy(update={'gpus': 4, 'mem_per_gpu': '32G', 'mem': None}),
     )
 
     return RunPlan(
