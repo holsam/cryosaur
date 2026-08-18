@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Callable, Optional
 
 # -- Import internal cryosaur utilities
-from cryosaur.utils.cluster.base import SchedulerBackend
+from cryosaur.utils.cluster.base import ResourceProfile, SchedulerBackend
 from cryosaur.utils.cluster.slurm import SlurmBackend, _default_slurm_cpu_resources, _default_slurm_gpu_resources
 from cryosaur.utils.cluster.status import ClusterStatus
 from cryosaur.utils.errors import CryosaurError
