@@ -7,6 +7,7 @@ import os, subprocess, typer
 from typing import Annotated, Literal
 
 # -- Import cryosaur utilities
+from cryosaur.commands.config.print import print_toml
 from cryosaur.utils.cli.registry import register
 from cryosaur.utils.cluster.cluster import _DEFAULT_RESOURCE_FACTORIES_KEYS, get_backend, default_resources
 from cryosaur.utils.config import CONFIG_PATH
@@ -108,4 +109,4 @@ def config_show():
     if not CONFIG_PATH.exists():
         log.info(f'No config file found at <cyan>{CONFIG_PATH}</cyan>. Run `cryosaur config init` first.')
         return
-    print(CONFIG_PATH.read_text())
+    print_toml(CONFIG_PATH)
