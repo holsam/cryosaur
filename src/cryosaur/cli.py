@@ -35,9 +35,9 @@ def logging_callback(
         typer.Option('-m', '--mode', help='Mode to use for resolving log file.', rich_help_panel='Logging Options')
     ] = 'append',
     quiet: Annotated[
-        bool,
-        typer.Option('-q', '--quiet', help='Disable all logging except errors.', show_default=False, rich_help_panel='Logging Options')
-    ] = False,
+        int,
+        typer.Option('-q', '--quiet', count=True, help='Decrease verbosity of logging.', show_default=False, rich_help_panel='Logging Options', metavar='')
+    ] = 0,
     verbosity: Annotated[
         int,
         typer.Option('-v', '--verbose', count=True, help='Increase verbosity of logging.', show_default=False, rich_help_panel='Logging Options', metavar='')
@@ -46,8 +46,9 @@ def logging_callback(
     # Check quiet and verbose haven't been supplied together
     if quiet and verbosity:
         raise typer.BadParameter('-q/--quiet and -v/--verbose are mutually exclusive.')
-    # Clamp verbosity to 3
-    verbosity = 3 if verbosity > 3 else verbosity
+    # Default verbosity is 2 ('INFO'), so clamp both quiet and verbose to max of 2
+    verbosity = 2 if verbosity > 2 else verbosity
+    quiet = 2 if quiet > 2 else quiet
     # Configure logging
     log_path = configure_logging(directory=log_dir, mode=log_mode, quiet=quiet, verbosity=verbosity)
     # Output confirmation message that logging has been set up

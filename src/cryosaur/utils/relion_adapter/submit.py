@@ -30,7 +30,7 @@ def _submit_step(step: PlannedStep, *, depends_on: list[str] | None = None) -> s
     job_id = result.stdout.strip()
     if not job_id.isdigit():
         raise SubmissionError(f'Unexpected sbatch output for step {step.name!r}: {result.stdout!r}')
-    log.info(f'Submitted <cyan>{step.name}</cyan> as SLURM job <cyan>{job_id}</cyan>')
+    log.debug(f'Submitted <cyan>{step.name}</cyan> as SLURM job <cyan>{job_id}</cyan>')
     return job_id
 
 
@@ -55,6 +55,8 @@ def render_single_job_script(steps: list[PlannedStep]) -> str:
     lines.append(f'#SBATCH --cpus-per-task={resources.cpus_per_task}')
     if resources.mem_per_gpu:
         lines.append(f'#SBATCH --mem-per-gpu={resources.mem_per_gpu}')
+    elif resources.mem_per_cpu:
+        lines.append(f'#SBATCH --mem-per-cpu={resources.mem_per_cpu}')
     elif resources.mem:
         lines.append(f'#SBATCH --mem={resources.mem}')
     lines.append('')

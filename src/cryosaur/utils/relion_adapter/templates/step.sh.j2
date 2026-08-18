@@ -10,6 +10,8 @@
 {% endif -%}
 {% if resources.mem_per_gpu -%}
 #SBATCH --mem-per-gpu={{ resources.mem_per_gpu }}
+{% elif resources.mem_per_cpu -%}
+#SBATCH --mem-per-cpu={{ resources.mem_per_cpu }}
 {% elif resources.mem -%}
 #SBATCH --mem={{ resources.mem }}
 {% endif -%}

@@ -26,7 +26,22 @@ _BASELINE_RESOURCES = SlurmResourceProfile(
     cpus_per_task=40,
     mem_per_gpu='32000M',
     time='72:00:00',
-    modules=['EM/relion'],
+    modules=[
+        'cuda/12.2',
+        'EM/AreTomo2/2024-09-05',
+        'EM/cryocare/0.3.0',
+        'EM/ctffind/4.1.14-rhel8',
+        'EM/Gctf/1.18',
+        'EM/icebreaker/0.3.5',
+        'EM/membrain-seg',
+        'EM/MotionCor2/1.6.3',
+        'EM/relion/5.0/2024-12-09',
+        'EM/topaz',
+        'fftw/3.3.8',
+        'gcc/11.2.0',
+        'hwloc/2.10.0',
+        'openmpi/4.1.2',
+    ],
 )
 
 _RESOLVE_TOKEN = '{{{{resolve:{job_type}}}}}'
@@ -39,7 +54,7 @@ _DESTRIPE_SUFFIX = '_destriped'      # cryosaur's own preferred naming, applied 
 # -- _destripe_commands: runs pylisc over the whole input directory in one call, then renames every output file (.mrc and any accompanying files, e.g. .log) from pylisc's hardcoded _PyLisC_angular suffix to cryosaur's own _destriped suffix
 def _destripe_commands(input_dir: Path, output_dir: Path) -> list[str]:
     pylisc_command = (
-        f'pylisc frames --output-dir {output_dir} '
+        f'pylisc frames --workers {8} --output-dir {output_dir} '
         f"--filename-template '{_FILENAME_TEMPLATE}' {input_dir}"
     )
     rename_command = (
@@ -120,7 +135,7 @@ def build_plan(source_project: Path, fork_dir: Path) -> RunPlan:
         array_over=None,  # pylisc frames processes the whole directory in one call
         commands=_destripe_commands(destripe_input_dir, destripe_output_dir),
         expected_outputs=[fork_dir / p for p in destriped_micrograph_for.values()],
-        resources=_BASELINE_RESOURCES.model_copy(update={'gpus': 0, 'cpus_per_task': 8}),
+        resources=_BASELINE_RESOURCES.model_copy(update={'gpus': 0, 'cpus_per_task': 8, 'mem_per_gpu': None, 'mem_per_cpu': '4000M'}),
     )
 
     # bridging STAR
