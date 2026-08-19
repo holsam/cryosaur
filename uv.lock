@@ -209,12 +209,12 @@ requires-dist = [
     { name = "mrcfile", specifier = ">=1.5.4" },
     { name = "pillow", specifier = ">=12.3.0" },
     { name = "pydantic", specifier = ">=2.13.4" },
-    { name = "pyside6", marker = "extra == 'gui'", specifier = ">=6.11.2" },
-    { name = "pyvista", marker = "extra == 'gui'", specifier = ">=0.48.4" },
-    { name = "pyvistaqt", marker = "extra == 'gui'", specifier = ">=0.12.0" },
+    { name = "pyside6", marker = "extra == 'gui'", specifier = ">=6.5.0" },
+    { name = "pyvista", marker = "extra == 'gui'", specifier = ">=0.43.0" },
+    { name = "pyvistaqt", marker = "extra == 'gui'", specifier = ">=0.9.0" },
     { name = "rich", specifier = ">=15.0.0" },
     { name = "starfile", specifier = ">=0.5.13" },
-    { name = "tomli-w", marker = "extra == 'gui'", specifier = ">=1.2.0" },
+    { name = "tomli-w", marker = "extra == 'gui'", specifier = ">=1.0.0" },
     { name = "typer", specifier = ">=0.27.1" },
 ]
 provides-extras = ["gui"]

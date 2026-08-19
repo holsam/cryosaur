@@ -23,10 +23,10 @@ cryosaur = "cryosaur.cli:cryosaur"
 
 [project.optional-dependencies]
 gui = [
-    "pyside6>=6.11.2",
-    "pyvista>=0.48.4",
-    "pyvistaqt>=0.12.0",
-    "tomli-w>=1.2.0",
+    "pyside6>=6.5.0",
+    "pyvista>=0.43.0",
+    "pyvistaqt>=0.9.0",
+    "tomli-w>=1.0.0",
 ]
 
 [build-system]
