@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field
 from cryosaur.utils.cluster.base import ResourceProfile
 from cryosaur.utils.cluster.cluster import get_backend
 from cryosaur.utils.errors import CryosaurError
+from cryosaur.utils.log import log
 
 # -- CONFIG_DIR: location of directory for config files
 CONFIG_DIR = Path(typer.get_app_dir('cryosaur'))
@@ -40,9 +41,11 @@ def _resolve_modules(modules: list[str], module_table: dict[str, str], resources
 # -- load_config: parses CONFIG_PATH, resolving module references and validating each resource profile against its scheduler's own profile type, returning None if no config file exists
 def load_config() -> CryosaurConfig | None:
     if not CONFIG_PATH.exists():
+        log.debug(f'No config file at {CONFIG_PATH}')
         return None
     with open(CONFIG_PATH, 'rb') as f:
         raw = tomllib.load(f)
+    log.debug(f'Loaded config from <cyan>{CONFIG_PATH}</cyan>')  
 
     cluster_raw = dict(raw.get('cluster', {}))
     module_table = cluster_raw.get('modules', {})
@@ -50,8 +53,10 @@ def load_config() -> CryosaurConfig | None:
 
     scheduler = cluster_raw.get('scheduler')
     backend = get_backend(scheduler) if scheduler else None
+    log.debug(f'Resolved scheduler={scheduler!r} backend={backend}')
     if resources_raw and backend is None:
-        raise CryosaurError(f'{CONFIG_PATH}: unrecognised or missing [cluster] scheduler {scheduler!r}; cannot validate [cluster.resources].')
+        log.error(f'{CONFIG_PATH}: unrecognised scheduler {scheduler!r}')
+        raise CryosaurError(f'{CONFIG_PATH}: unrecognised or missing [cluster] scheduler {scheduler!r}; cannot validate [cluster.resources]')
 
     resolved_resources: dict[str, ResourceProfile] = {}
     for resources_id, profile in resources_raw.items():
@@ -61,24 +66,26 @@ def load_config() -> CryosaurConfig | None:
         try:
             resolved_resources[resources_id] = backend.resource_profile_cls(**profile)
         except Exception as exc:
+            log.error(f'Invalid [cluster.resources.{resources_id}]: {exc}')
             raise CryosaurError(f'{CONFIG_PATH}: invalid [cluster.resources.{resources_id}] - {exc}') from exc
     cluster_raw['resources'] = resolved_resources
 
     try:
         return CryosaurConfig(cluster=cluster_raw)
     except Exception as exc:
+        log.error(f'Invalid config: {exc}')
         raise CryosaurError(f'{CONFIG_PATH}: invalid config - {exc}') from exc
 
 # -- resolve_resources: returns the ResourceProfile to use as a baseline, honouring an explicit override over the config's default_resources, raising a clear error if neither is available
 def resolve_resources(config: CryosaurConfig | None, override_id: str | None) -> ResourceProfile:
     if config is None:
-        raise CryosaurError(f'No cryosaur config found at {CONFIG_PATH}. Run `cryosaur config init` first.')
+        raise CryosaurError(f'No cryosaur config found at {CONFIG_PATH}. Run `cryosaur config init` first')
 
     resources_id = override_id or config.cluster.default_resources
     if resources_id is None:
-        raise CryosaurError(f'{CONFIG_PATH}: no [cluster] default_resources set, and no --cluster-resources given.')
+        raise CryosaurError(f'{CONFIG_PATH}: no [cluster] default_resources set, and no --cluster-resources given')
 
     profile = config.cluster.resources.get(resources_id)
     if profile is None:
-        raise CryosaurError(f'{CONFIG_PATH}: no [cluster.resources.{resources_id}] section defined.')
+        raise CryosaurError(f'{CONFIG_PATH}: no [cluster.resources.{resources_id}] section defined')
     return profile

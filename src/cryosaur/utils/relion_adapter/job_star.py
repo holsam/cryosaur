@@ -7,6 +7,9 @@ import re
 from pathlib import Path
 from pydantic import BaseModel
 
+# -- Import cryosaur utilities
+from cryosaur.utils.log import log
+
 # -- Define constant for regex patterns
 _VERSION_RE = re.compile(r'#\s*version\s+(\S+)')
 _PIPELINER_RE = re.compile(r'#\s*CCP-EM Pipeliner version\s+(\S+)')
@@ -22,6 +25,7 @@ def extract_relion_headers(path: Path) -> RelionHeaders:
     version_match = _VERSION_RE.search(text)
     pipeliner_match = _PIPELINER_RE.search(text)
     if not version_match or not pipeliner_match:
+        log.error(f'Could not find RELION/Pipeliner version headers in {path}')
         raise ValueError(f'Could not find RELION/Pipeliner version headers in {path}')
     return RelionHeaders(
         relion_version=version_match.group(1),

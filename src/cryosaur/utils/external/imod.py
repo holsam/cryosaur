@@ -9,11 +9,14 @@ from pathlib import Path
 
 # -- Import cryosaur utilities
 from cryosaur.utils.errors import CryosaurError
+from cryosaur.utils.log import log
 
 # -- _run: runs an IMOD command, raising CryosaurError with stderr on failure
 def _run(command: list[str]) -> subprocess.CompletedProcess:
+    log.debug(f'Running {" ".join(command)}')
     result = subprocess.run(command, capture_output=True, text=True)
     if result.returncode != 0:
+        log.error(f'{command[0]} failed: {result.stderr.strip()}')
         raise CryosaurError(f'{command[0]} failed: {result.stderr.strip()}')
     return result
 
@@ -87,6 +90,7 @@ def parse_tomopitch_output(stdout_text: str) -> TomopitchRecommendation:
         stdout_text,
     )
     if not match:
+        log.error(f'Could not parse tomopitch output:\n{stdout_text}')
         raise CryosaurError(f'Could not parse tomopitch output:\n{stdout_text}')
     thickness, z_shift, angle_offset, x_axis_tilt = (float(g) for g in match.groups())
     return TomopitchRecommendation(
@@ -102,9 +106,7 @@ def run_tomopitch(pitch_model_path: Path) -> TomopitchRecommendation:
     return parse_tomopitch_output(result.stdout)
 
 # -- compute_trim_ranges: turns a tomopitch recommendation into trimvol's x/y/z start-end ranges
-def compute_trim_ranges(
-    volume_path: Path, recommendation: TomopitchRecommendation
-) -> tuple[tuple[int, int], tuple[int, int], tuple[int, int]]:
+def compute_trim_ranges(volume_path: Path, recommendation: TomopitchRecommendation) -> tuple[tuple[int, int], tuple[int, int], tuple[int, int]]:
     with mrcfile.open(volume_path, header_only=True, permissive=True) as mrc:
         nx, ny, nz = int(mrc.header.nx), int(mrc.header.ny), int(mrc.header.nz)
 
@@ -115,6 +117,8 @@ def compute_trim_ranges(
     x_range = (0, nx - 1)
     y_range = (0, ny - 1)
     z_range = (max(z_start, 0), min(z_end, nz - 1))
+    if z_range != (z_start, z_end):
+        log.debug(f'Clamped z range from ({z_start}, {z_end}) to {z_range} (volume nz={nz})')
     return x_range, y_range, z_range
 
 # -- run_trimvol: crops to explicit X/Y/Z start-end ranges

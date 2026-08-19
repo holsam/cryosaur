@@ -8,6 +8,7 @@ from pathlib import Path
 from pydantic import BaseModel
 
 # -- Import cryosaur utilities
+from cryosaur.utils.log import log
 from cryosaur.utils.relion_adapter.job_star import read_job_options
 from cryosaur.utils.relion_adapter.pipeline_graph import PipelineGraph
 
@@ -29,6 +30,7 @@ def _ancestors(graph: PipelineGraph, job_name: str, seen: set[str]) -> None:
     if job_name in seen:
         return
     seen.add(job_name)
+    log.debug(f'Visiting ancestor job <cyan>{job_name}</cyan>')
     for upstream_job in graph.upstream(job_name):
         _ancestors(graph, upstream_job.name, seen)
 
@@ -36,6 +38,7 @@ def _ancestors(graph: PipelineGraph, job_name: str, seen: set[str]) -> None:
 def build_lineage(source_project: Path, graph: PipelineGraph, branch_point: str) -> Lineage:
     ancestor_names: set[str] = set()
     _ancestors(graph, branch_point, ancestor_names)
+    log.info(f'Recorded {len(ancestor_names)} ancestor job(s) for branch point <cyan>{branch_point}</cyan>')
 
     jobs = [
         LineageJob(
@@ -59,4 +62,5 @@ def write_lineage(lineage: Lineage, fork_dir: Path) -> Path:
     path = fork_dir / 'cryosaur' / 'lineage.json'
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(lineage.model_dump_json(indent=2))
+    log.debug(f'Wrote lineage to <cyan>{path}</cyan>')
     return path

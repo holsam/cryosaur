@@ -87,6 +87,7 @@ def config_edit(
     Open the cryosaur config file in $EDITOR, creating it first if it doesn't exist.
     '''
     if not CONFIG_PATH.exists():
+        log.info(f'No config file found; creating a new one at <cyan>{CONFIG_PATH}</cyan>')
         config_init(cluster=None)
     if editor is not None:
         from shutil import which
@@ -95,7 +96,8 @@ def config_edit(
             try:
                 subprocess.call([editor_path, str(CONFIG_PATH)])
                 return
-            except Exception:
+            except Exception as e:
+                log.error(f'Could not open <cyan>{CONFIG_PATH}</cyan> in editor {editor}: {e}')
                 raise CryosaurError(f'Could not open <cyan>{CONFIG_PATH}</cyan> in editor {editor}, use alternative editor')    
     editor = os.environ.get('EDITOR', 'vi')
     subprocess.call([editor, str(CONFIG_PATH)])

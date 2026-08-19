@@ -19,6 +19,7 @@ class CryosaurError(Exception):
 def handle_errors(func: Callable) -> Callable:
     @wraps(func)
     def wrapper(*args, **kwargs):
+        log.info(f'Running <cyan>{func.__name__}</cyan>')
         try:
             result = func(*args, **kwargs)
         except CryosaurError as exc:

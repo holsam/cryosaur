@@ -41,6 +41,7 @@ class SlurmBackend(SchedulerBackend):
             subprocess.run(['sinfo'], capture_output=True, timeout=5, check=True)
             return True
         except (subprocess.SubprocessError, OSError):
+            log.debug(f'sinfo check failed, treating SLURM as unavailable: {exc}')
             return False
 
     def in_job(self) -> bool:

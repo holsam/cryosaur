@@ -12,6 +12,7 @@ from typing import Annotated, List
 
 # -- Import cryosaur utilties
 from cryosaur.utils.cli.registry import register
+from cryosaur.utils.log import log
 
 # -- Dependency: dataclass holding information about a given dependency
 @dataclass
@@ -51,6 +52,7 @@ def print_dependency_table(commands):
         console.print()
         deps = _COMMAND_DEPENDENCIES.get(command, [])
         if not deps:
+            log.info(f'No dependencies registered for command <cyan>{command}</cyan>')
             continue
         none_missing = all(dep.available for dep in deps)
         header_style= 'green' if none_missing else 'red'

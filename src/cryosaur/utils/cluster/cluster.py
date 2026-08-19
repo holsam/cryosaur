@@ -34,6 +34,7 @@ def default_resources(resources_id: str, job_name: str) -> ResourceProfile:
     factory = _DEFAULT_RESOURCE_FACTORIES.get(resources_id)
     if factory is None:
         raise CryosaurError(f'No default resource profile for scheduler {resources_id!r}; pass resources explicitly.')
+    log.debug(f'Resolved default resources for {resources_id!r}: {factory.__name__}')
     return factory(job_name)
 
 # -- check_cluster: returns ClusterStatus corresponding to current state
@@ -47,6 +48,7 @@ def check_cluster(scheduler: Optional[str] = None) -> ClusterStatus:
     for backend in _BACKENDS.values():
         status = backend.check()
         if status.on_cluster:
+            log.debug(f'Detected {backend.name} scheduler')
             return status
     return ClusterStatus(recognised=True, on_cluster=False)
 

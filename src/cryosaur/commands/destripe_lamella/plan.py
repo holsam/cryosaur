@@ -9,6 +9,7 @@ from pathlib import Path
 # -- Import cryosaur utilities
 from cryosaur.commands.destripe_lamella.bridge import build_bridging_star, parse_tilt_series_star_loop
 from cryosaur.utils.config import load_config, resolve_resources
+from cryosaur.utils.log import log
 from cryosaur.utils.relion_adapter.job_star import extract_relion_headers, read_job_options, write_job_star
 from cryosaur.utils.relion_adapter.lineage import build_lineage, write_lineage
 from cryosaur.utils.relion_adapter.pipeline_graph import PipelineGraph
@@ -73,14 +74,18 @@ def _read_source_alignment(
 
 # -- build_plan: reads source_project, plans a destripe-lamella branch into fork_dir, and returns the RunPlan
 def build_plan(source_project: Path, fork_dir: Path, *, cluster_resources: str | None = None) -> RunPlan:
+    log.info(f'Building plan from source project <cyan>{source_project}</cyan>')
     baseline_resources = resolve_resources(load_config(), cluster_resources)
     graph = PipelineGraph.from_star(source_project)
     headers = extract_relion_headers(source_project / 'default_pipeline.star')
 
     align_jobs = graph.jobs_of_type('relion.aligntiltseries.aretomo')
     if not align_jobs:
-        raise ValueError(f'No relion.aligntiltseries.aretomo job found in {source_project}')
+        log.error(f'No relion.aligntiltseries.aretomo job found in {source_project}')
+        raise CryosaurError(f'No relion.aligntiltseries.aretomo job found in {source_project}')
     align_job = align_jobs[-1]
+    if len(align_jobs) > 1:
+        log.info(f'Multiple align-tilt-series jobs found; using most recent: <cyan>{align_job.name}</cyan>')
 
     lineage = build_lineage(source_project, graph, align_job.name)
     write_lineage(lineage, fork_dir)
@@ -95,15 +100,15 @@ def build_plan(source_project: Path, fork_dir: Path, *, cluster_resources: str |
     # Assert the expected flat directory layout
     micrograph_dirs = {str(Path(path).parent) for _, path in micrograph_pairs}
     if len(micrograph_dirs) != 1:
-        raise ValueError(
-            f'Expected all source micrographs to share one parent directory for a single pylisc frames call, found {len(micrograph_dirs)}: {micrograph_dirs}'
-        )
+        log.error(f'Expected all source micrographs to share one parent directory for a single pylisc frames call, found {len(micrograph_dirs)}: {micrograph_dirs}')
+        raise CryosaurError(f'Expected all source micrographs to share one parent directory for a single pylisc frames call, found {len(micrograph_dirs)}: {micrograph_dirs}')
     destripe_input_dir = source_project / micrograph_dirs.pop()
 
     destriped_micrograph_for: dict[tuple[str, str], str] = {}
     for tomo_name, original_path in micrograph_pairs:
         new_path = destripe_output_dir / f'{Path(original_path).stem}{_DESTRIPE_SUFFIX}.mrc'
         destriped_micrograph_for[(tomo_name, original_path)] = str(new_path.relative_to(fork_dir))
+    log.progress(f'Mapped {len(destriped_micrograph_for)} micrograph(s) to destriped replacements')
 
     destripe_step = PlannedStep(
         name='destripe',
@@ -181,7 +186,7 @@ def build_plan(source_project: Path, fork_dir: Path, *, cluster_resources: str |
         resources=baseline_resources.model_copy(update={'gpus': 4, 'mem_per_gpu': '32G', 'mem': None}),
     )
 
-    return RunPlan(
+    plan = RunPlan(
         source_project=source_project,
         source_read_at=datetime.now(timezone.utc),
         source_relion_version=headers.relion_version,
@@ -192,3 +197,5 @@ def build_plan(source_project: Path, fork_dir: Path, *, cluster_resources: str |
         cryosaur_version='0.1.0',
         steps=[destripe_step, reconstruct_step, denoise_step, segment_step],
     )
+    log.info(f'Built plan with {len(plan.steps)} step(s): {", ".join(s.name for s in plan.steps)}')
+    return plan

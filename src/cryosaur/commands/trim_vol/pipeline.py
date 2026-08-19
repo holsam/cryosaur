@@ -18,6 +18,7 @@ from cryosaur.utils.external.imod import (
     run_trimvol,
     run_warpvol,
 )
+from cryosaur.utils.log import log
 
 # -- TrimResult: every intermediate and final path from one run of the pipeline, kept regardless of --preview so callers decide what to clean up
 @dataclass
@@ -43,15 +44,23 @@ def run_trim_pipeline(
     output_dir.mkdir(parents=True, exist_ok=True)
     stem = mrc_path.stem
 
+    log.progress(f'<cyan>{stem}</cyan>: running lowpass filter for surface detection')
     filtered_for_surface = lowpass_filter(mrc_path, output_dir / f'{stem}_lowpass_surface.mrc', lowpass_radius, lowpass_sigma, lowpass_units)
+    log.progress(f'<cyan>{stem}</cyan>: running findsection surface')
     surface_model = run_findsection_surface(filtered_for_surface, output_dir / f'{stem}_surface.mod')
+    log.progress(f'<cyan>{stem}</cyan>: running flattenwarp')
     warp_file = run_flattenwarp(surface_model, output_dir / f'{stem}_warp.xf')
+    log.progress(f'<cyan>{stem}</cyan>: running warpvol')
     flattened = run_warpvol(mrc_path, warp_file, output_dir / f'{stem}_flattened.mrc')
 
+    log.progress(f'<cyan>{stem}</cyan>: running lowpass filter for pitch detection')
     filtered_for_pitch = lowpass_filter(flattened, output_dir / f'{stem}_lowpass_pitch.mrc', lowpass_radius, lowpass_sigma, lowpass_units)
+    log.progress(f'<cyan>{stem}</cyan>: running findsection pitch')
     pitch_model = run_findsection_pitch(filtered_for_pitch, output_dir / f'{stem}_pitch.mod')
+    log.progress(f'<cyan>{stem}</cyan>: running tomopitch')
     recommendation = run_tomopitch(pitch_model)
     x_range, y_range, z_range = compute_trim_ranges(flattened, recommendation)
+    log.progress(f'<cyan>{stem}</cyan>: running trimvol {x_range=} {y_range=} {z_range=}')
     trimmed = run_trimvol(flattened, output_dir / f'{stem}_trimmed.mrc', x_range, y_range, z_range)
 
     return TrimResult(

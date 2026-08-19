@@ -74,6 +74,7 @@ def build_bridging_star(
         tomo_name = row[name_column]
         source_per_tomo_path = source_project / row[star_file_column]
         new_per_tomo_path = fork_tilt_series_dir / f'{tomo_name}.star'
+        log.progress(f'Bridging tilt series for <cyan>{tomo_name}</cyan>')
         _bridge_per_tomogram_star(
             source_path=source_per_tomo_path,
             output_path=new_per_tomo_path,

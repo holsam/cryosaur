@@ -39,6 +39,7 @@ def build_submission_script(
     script_path = output_dir / f'{mrc_path.stem}_trim.sbatch'
     log_path = output_dir / f'{mrc_path.stem}_trim.log'
     backend.write_script(resources, [command], script_path, log_path)
+    log.info(f'  <cyan>{mrc_path.stem}</cyan> -> wrote {scheduler} script at {script_path}')
     return script_path
 
 # -- submit_job: submits a written script via the named scheduler backend, returning the job id

@@ -54,6 +54,8 @@ def run_local(
             result.filtered_for_pitch,
             result.pitch_model,
         ):
+            if not intermediate.exists():
+                log.warning(f'Intermediate <cyan>{intermediate}</cyan> missing before cleanup')
             intermediate.unlink(missing_ok=True)
         log.info(f'  <cyan>{mrc_path.name}</cyan> -> {final_path}')
 
