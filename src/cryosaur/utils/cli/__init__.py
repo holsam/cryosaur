@@ -11,4 +11,5 @@ from cryosaur.commands.utils import check_external_tools as _check_tools_cli
 from cryosaur.commands.utils import flatten as _flatten_cli
 from cryosaur.commands.project import annotate as _project_annotate_cli
 from cryosaur.commands.project import render as _project_render_cli
+from cryosaur.commands.project import session as _project_session_cli
 from cryosaur.commands.project import view as _project_view_cli
