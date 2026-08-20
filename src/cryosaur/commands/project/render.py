@@ -9,17 +9,16 @@ from typing import Annotated
 
 # -- Import cryosaur utilities
 from cryosaur.utils.project import store
+from cryosaur.utils.cli.options import DbPathOption
 from cryosaur.utils.cli.registry import register
+from cryosaur.utils.config import load_config, resolve_db_path
 from cryosaur.utils.errors import CryosaurError
 from cryosaur.utils.log import log
 
 # -- render: extracts a surface mesh from segmentation output for one lamella, caches it, writes a thumbnail, and records an overlay row
 @register('render', group='project')
 def render(
-    db_path: Annotated[
-        Path,
-        typer.Option('--db-path', help='Path to the annotation SQLite database.'),
-    ],
+    db_path: DbPathOption = None,
     lamella_id: Annotated[
         int,
         typer.Option('--lamella-id', help='Lamella to render an overlay for.'),
@@ -34,14 +33,16 @@ def render(
     '''
     from cryosaur.commands.project.utils.overlay import extract_and_cache_overlay
 
-    lamella = _find_lamella(db_path, lamella_id)
-    session = store.get_session(db_path, lamella.session_id)
+    resolved_db_path = resolve_db_path(load_config(), db_path)
+
+    lamella = _find_lamella(resolved_db_path, lamella_id)
+    session = store.get_session(resolved_db_path, lamella.session_id)
     seg_dir = session.paths.get('segmentations')
     if not seg_dir:
         raise CryosaurError(f'Session <cyan>{session.session_id}</cyan> has no <cyan>segmentations</cyan> path set')
 
     mesh_path, thumbnail_path = extract_and_cache_overlay(Path(seg_dir), lamella, seg_type)
-    overlay = store.add_overlay(db_path, lamella_id, seg_type, str(thumbnail_path), mesh_cache_path=str(mesh_path))
+    overlay = store.add_overlay(resolved_db_path, lamella_id, seg_type, str(thumbnail_path), mesh_cache_path=str(mesh_path))
     log.info(f'Rendered overlay <cyan>{overlay.id}</cyan> for lamella <cyan>{lamella.lamella_name}</cyan>')
 
 # -- _find_lamella: returns the LamellaRecord for lamella_id, raising CryosaurError if it doesn't exist in db_path

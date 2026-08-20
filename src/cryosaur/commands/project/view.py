@@ -8,7 +8,10 @@ from pathlib import Path
 from typing import Annotated
 
 # -- Import cryosaur utilities
+from cryosaur.utils.project import store
+from cryosaur.utils.cli.options import DbPathOption
 from cryosaur.utils.cli.registry import register
+from cryosaur.utils.config import load_config, resolve_db_path
 from cryosaur.utils.errors import CryosaurError
 
 # -- _APP_PATH: path to the Streamlit app module, relative to this package
@@ -21,14 +24,11 @@ def build_streamlit_args(db_path: Path) -> list[str]:
 # -- view: launches the local-only Streamlit dashboard for db_path
 @register('view', group='project')
 def view(
-    db_path: Annotated[
-        Path,
-        typer.Option('--db-path', help='Path to the annotation SQLite database.'),
-    ],
+    db_path: DbPathOption = None,
 ):
     '''
     Launch the local-only Streamlit dashboard for the annotation store.
     '''
-    if not db_path.exists():
-        raise CryosaurError(f'No annotation database at <cyan>{db_path}</cyan>')
-    subprocess.run(build_streamlit_args(db_path))
+    resolved_db_path = resolve_db_path(load_config(), db_path)
+    store.init_db(resolved_db_path)  # create database if it doesn't exist
+    subprocess.run(build_streamlit_args(resolved_db_path))
