@@ -22,6 +22,10 @@ def render(
         str,
         typer.Option('--session-id', help='Session the lamella(e) belong to.'),
     ],
+    seg_type: Annotated[
+        str,
+        typer.Option('--seg-type', help="Segmentation source, e.g. 'membrain-seg' or 'easymode'."),
+    ],
     lamella_name: Annotated[
         str | None,
         typer.Option('--lamella-name', help='Lamella to render an overlay for (required unless --all).', show_default=False),
@@ -30,10 +34,6 @@ def render(
         bool,
         typer.Option('--all', help='Render every lamella in the session instead of one.', show_default=False),
     ] = False,
-    seg_type: Annotated[
-        str,
-        typer.Option('--seg-type', help="Segmentation source, e.g. 'membrain-seg' or 'easymode'."),
-    ],
     db_path: DbPathOption = None,
 ):
     '''
