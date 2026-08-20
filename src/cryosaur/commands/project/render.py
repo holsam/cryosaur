@@ -31,7 +31,7 @@ def render(
     '''
     Extract and cache a segmentation surface overlay for a lamella.
     '''
-    from cryosaur.commands.project.utils.overlay import extract_and_cache_overlay
+    from cryosaur.utils.project.overlay import extract_and_cache_overlay
 
     resolved_db_path = resolve_db_path(load_config(), db_path)
 

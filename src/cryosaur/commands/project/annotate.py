@@ -38,7 +38,7 @@ def annotate(
 
     # Imported lazily so PySide6/PyVista are only pulled in when annotate actually launches
     from PySide6.QtWidgets import QApplication
-    from cryosaur.commands.project.utils.annotate_window import AnnotateWindow
+    from cryosaur.utils.project.gui.annotate_window import AnnotateWindow
 
     app = QApplication(sys.argv)
     window = AnnotateWindow(resolved_db_path, session)

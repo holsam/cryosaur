@@ -93,7 +93,7 @@ class AnnotateWindow(QMainWindow):
         lamellae = {l.id: l for l in store.list_lamellae(self.db_path, self.session.session_id)}
         self._current_lamella = lamellae[lamella_id]
 
-        from cryosaur.commands.project.utils.geometry_worker import GeometryWorker
+        from cryosaur.utils.project.geometry_worker import GeometryWorker
         worker = GeometryWorker(self.db_path, self._current_lamella, self.geometry_ready)
         self._pool.start(worker)
 
