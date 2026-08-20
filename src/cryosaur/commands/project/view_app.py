@@ -11,14 +11,13 @@ from pathlib import Path
 from cryosaur.utils.project import import_folder, store, toml_io
 
 # -- _PATH_KINDS: preset session.paths keys offered in the import-folder form
-_PATH_KINDS = ['raw', 'relion_project', 'segmentations', 'other']
+_PATH_KINDS = ['raw', 'segmentations', 'other']
 
 # -- _AUTO_REGISTER_HELP: per-path_kind tooltip for the auto-register checkbox
 _AUTO_REGISTER_HELP = {
     'raw': 'Auto-register lamellae from .mrc files found in this folder.',
-    'relion_project': 'Auto-register lamellae from .mrc files found in this folder.',
-    'segmentations': 'Auto-register lamellae from .mrc files found in this folder.',
-    'other': 'Auto-register lamellae from .mrc files found in this folder.',
+    'segmentations': 'Auto-register segmentations from .mrc files found in this folder.',
+    'other': 'Auto-register .mrc files found in this folder.',
 }
 
 # -- _browse_for_folder: returns a folder path chosen via a native OS dialog, or None if cancelled
