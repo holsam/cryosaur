@@ -94,6 +94,21 @@ def add_session(db_path: Path, session_id: str, session_name: str, paths: dict[s
         conn.execute('INSERT INTO sessions (session_id, session_name, paths, created_at, updated_at) VALUES (?, ?, ?, ?, ?)', (record.session_id, record.session_name, json.dumps(record.paths), record.created_at, record.updated_at))
     return record
 
+# -- update_session_paths: returns the updated SessionRecord, with paths[key] set to value (or removed, if value is None)
+@handle_errors
+def update_session_paths(db_path: Path, session_id: str, key: str, value: str | None) -> SessionRecord:
+    session = get_session(db_path, session_id)
+    if session is None:
+        raise CryosaurError(f'No session <cyan>{session_id}</cyan> to update paths for')
+    paths = dict(session.paths)
+    if value is None:
+        paths.pop(key, None)
+    else:
+        paths[key] = value
+    with _connect(db_path) as conn:
+        conn.execute('UPDATE sessions SET paths = ?, updated_at = datetime("now") WHERE session_id = ?', (json.dumps(paths), session_id))
+    return get_session(db_path, session_id)
+
 # -- get_session: returns the SessionRecord for session_id, or None if it doesn't exist
 def get_session(db_path: Path, session_id: str) -> SessionRecord | None:
     with _connect(db_path) as conn:
