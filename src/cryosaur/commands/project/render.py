@@ -18,7 +18,6 @@ from cryosaur.utils.log import log
 # -- render: extracts a surface mesh from segmentation output for one lamella, caches it, writes a thumbnail, and records an overlay row
 @register('render', group='project')
 def render(
-    db_path: DbPathOption = None,
     lamella_id: Annotated[
         int,
         typer.Option('--lamella-id', help='Lamella to render an overlay for.'),
@@ -27,6 +26,7 @@ def render(
         str,
         typer.Option('--seg-type', help="Segmentation source, e.g. 'membrain-seg' or 'easymode'."),
     ],
+    db_path: DbPathOption = None,
 ):
     '''
     Extract and cache a segmentation surface overlay for a lamella.

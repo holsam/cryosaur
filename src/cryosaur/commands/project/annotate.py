@@ -18,11 +18,11 @@ from cryosaur.utils.log import log
 # -- annotate: launches the lamella annotation GUI for one session
 @register('annotate', group='project')
 def annotate(
-    db_path: DbPathOption = None,
     session_id: Annotated[
         str,
         typer.Option('--session-id', help='Session to annotate.'),
     ],
+    db_path: DbPathOption = None,
 ):
     '''
     Launch the lamella annotation GUI for a session.
