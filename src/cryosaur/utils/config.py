@@ -17,6 +17,8 @@ from cryosaur.utils.log import log
 CONFIG_DIR = Path(typer.get_app_dir('cryosaur'))
 # -- CONFIG_PATH: location of cryosaur config file
 CONFIG_PATH = CONFIG_DIR / 'config.toml'
+# -- DEFAULT_DB_PATH: annotation store location used when [project] db_path isn't set
+DEFAULT_DB_PATH = CONFIG_DIR / 'cryosaur.db'
 
 # -- ClusterSection: config.toml's [cluster] section
 class ClusterSection(BaseModel):
@@ -25,9 +27,14 @@ class ClusterSection(BaseModel):
     modules: dict[str, str] = Field(default_factory=dict)
     resources: dict[str, ResourceProfile] = Field(default_factory=dict)
 
+# -- ProjectSection: config.toml's [project] section
+class ProjectSection(BaseModel):
+    db_path: str | None = None
+
 # -- CryosaurConfig: parsed config.toml
 class CryosaurConfig(BaseModel):
     cluster: ClusterSection
+    project: ProjectSection = Field(default_factory=ProjectSection)
 
 # -- _resolve_modules: replaces a resource profile's `modules` keys with their real module strings from [cluster.modules], raising on an unknown key
 def _resolve_modules(modules: list[str], module_table: dict[str, str], resources_id: str) -> list[str]:
@@ -51,6 +58,8 @@ def load_config() -> CryosaurConfig | None:
     module_table = cluster_raw.get('modules', {})
     resources_raw = dict(cluster_raw.get('resources', {}))
 
+    project_raw = dict(raw.get('project', {}))
+
     scheduler = cluster_raw.get('scheduler')
     backend = get_backend(scheduler) if scheduler else None
     log.debug(f'Resolved scheduler={scheduler!r} backend={backend}')
@@ -71,7 +80,7 @@ def load_config() -> CryosaurConfig | None:
     cluster_raw['resources'] = resolved_resources
 
     try:
-        return CryosaurConfig(cluster=cluster_raw)
+        return CryosaurConfig(cluster=cluster_raw, project=project_raw)
     except Exception as exc:
         log.error(f'Invalid config: {exc}')
         raise CryosaurError(f'{CONFIG_PATH}: invalid config - {exc}') from exc
@@ -89,3 +98,11 @@ def resolve_resources(config: CryosaurConfig | None, override_id: str | None) ->
     if profile is None:
         raise CryosaurError(f'{CONFIG_PATH}: no [cluster.resources.{resources_id}] section defined')
     return profile
+
+# -- resolve_db_path: returns the annotation database path to use, accepting explicit override over the config's [project] db_path and falling back to DEFAULT_DB_PATH
+def resolve_db_path(config: CryosaurConfig | None, override: Path | None) -> Path:
+    if override is not None:
+        return override
+    if config is not None and config.project.db_path:
+        return Path(config.project.db_path).expanduser()
+    return DEFAULT_DB_PATH

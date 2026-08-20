@@ -14,47 +14,56 @@ from cryosaur.utils.config import CONFIG_PATH
 from cryosaur.utils.errors import CryosaurError
 from cryosaur.utils.log import log
 
-# -- _EMPTY_TEMPLATE: config.toml written when no --cluster is given
-_EMPTY_TEMPLATE = '''\
-# cryosaur configuration file
+# -- _build_template: build config.toml depending on passed arguments
+def _build_template(
+    cluster_seed
+) -> str:
+    template = '# cryosaur configuration file'
+    # Add cluster section
+    template += '\n\n'
+    if cluster_seed is None:
+        template += '''\
+            [cluster]
+            # scheduler = "slurm"
+            # default_resources = "<an id defined below>"
 
-[cluster]
-# scheduler = "slurm"
-# default_resources = "<an id defined below>"
+            [cluster.modules]
+            # name = "actual/module/version"
 
-[cluster.modules]
-# name = "actual/module/version"
-
-[cluster.resources.<id>]
-# partition = ""
-# gpus = 0
-# cpus_per_task = 1
-# mem_per_gpu = ""
-# time = "24:00:00"
-# modules = []
-'''
-
-# -- _seeded_template: config.toml pre-filled from a default set
-def _seeded_template(defaults_id: str) -> str:
-    scheduler = defaults_id.split('_')[0]
-    defaults = default_resources(defaults_id, 'config')
-    return f'''\
-# cryosaur cluster configuration
-
-[cluster]
-scheduler = "{scheduler}"
-default_resources = "default"
-
-[cluster.modules]
-# name = "actual/module/version"
-
-[cluster.resources.default]
-partition = ""  # REQUIRED: set your partition
-cpus_per_task = {defaults.cpus_per_task}
-mem = "{defaults.mem}"
-time = "{defaults.time}"
-modules = []
-'''
+            [cluster.resources.<id>]
+            # partition = ""
+            # gpus = 0
+            # cpus_per_task = 1
+            # mem_per_gpu = ""
+            # time = "24:00:00"
+            # modules = []
+            '''
+    else:
+        scheduler = defaults_id.split('_')[0]
+        defaults = default_resources(defaults_id, 'config')
+        template += f'''\
+            [cluster]
+            scheduler = "{scheduler}"
+            default_resources = "default"
+            
+            [cluster.modules]
+            # name = "actual/module/version"
+            
+            [cluster.resources.default]
+            partition = ""  # REQUIRED: set your partition
+            cpus_per_task = {defaults.cpus_per_task}
+            mem = "{defaults.mem}"
+            time = "{defaults.time}"
+            modules = []
+            '''  
+    # Add project section
+    template += '\n\n'
+    template += '''\
+        [project]
+        db_path = ""
+        '''
+    # Return config template
+    return template
 
 # -- config_init: writes a new config file, without overwriting an existing one
 @register('init', group='config')
@@ -70,7 +79,7 @@ def config_init(
     if CONFIG_PATH.exists():
         raise CryosaurError(f'Config file already exists at <cyan>{CONFIG_PATH}</cyan>; edit it directly or remove first')
 
-    template = _seeded_template(seed) if seed else _EMPTY_TEMPLATE
+    template = _build_template(seed)
     CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
     CONFIG_PATH.write_text(template)
     log.info(f'Wrote config file to <cyan>{CONFIG_PATH}</cyan>')
