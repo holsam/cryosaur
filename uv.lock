@@ -49,6 +49,11 @@ dependencies = [
     { name = "typer" },
 ]
 
+[package.optional-dependencies]
+project = [
+    { name = "tomli-w" },
+]
+
 [package.metadata]
 requires-dist = [
     { name = "jinja2", specifier = ">=3.1.6" },
@@ -58,8 +63,10 @@ requires-dist = [
     { name = "pydantic", specifier = ">=2.13.4" },
     { name = "rich", specifier = ">=15.0.0" },
     { name = "starfile", specifier = ">=0.5.13" },
+    { name = "tomli-w", marker = "extra == 'project'", specifier = ">=1.2.0" },
     { name = "typer", specifier = ">=0.27.1" },
 ]
+provides-extras = ["project"]
 
 [[package]]
 name = "jinja2"
@@ -422,6 +429,15 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/8e/c5/83fd806f8a7c982fb4861171e6761cc1016649ffc3a7ff9cc3f9fd608419/starfile-0.5.13.tar.gz", hash = "sha256:c9562960b06558a35c12e0bd1b8a30b71c4b676733a8b9f222c8ee94a152dc15", size = 28533, upload-time = "2025-06-02T19:34:10.316Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/0b/d4/a4e3e0237574058d3b901971f185a22cb4d1751151b224d4cc44b023f1fa/starfile-0.5.13-py3-none-any.whl", hash = "sha256:2a8cd876121e9183b4594442bc3bd0818964aba66da964e5b2c373984b3c0ce7", size = 10614, upload-time = "2025-06-02T19:34:07.532Z" },
+]
+
+[[package]]
+name = "tomli-w"
+version = "1.2.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/19/75/241269d1da26b624c0d5e110e8149093c759b7a286138f4efd61a60e75fe/tomli_w-1.2.0.tar.gz", hash = "sha256:2dd14fac5a47c27be9cd4c976af5a12d87fb1f0b4512f81d69cce3b35ae25021", size = 7184, upload-time = "2025-01-15T12:07:24.262Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/c7/18/c86eb8e0202e32dd3df50d43d7ff9854f8e0603945ff398974c1d91ac1ef/tomli_w-1.2.0-py3-none-any.whl", hash = "sha256:188306098d013b691fcadc011abd66727d3c414c571bb01b1a174ba8c983cf90", size = 6675, upload-time = "2025-01-15T12:07:22.074Z" },
 ]
 
 [[package]]
