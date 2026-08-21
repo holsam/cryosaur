@@ -203,8 +203,25 @@ def main() -> None:
         st.info("Annotation window launched. Reload this page once you're finished to see updates.")
 
     lamellae = store.list_lamellae(db_path, session_id)
+    filter_col, status_col = st.columns([3, 2])
+    with filter_col:
+        name_filter = st.text_input('Filter by name')
+    with status_col:
+        statuses_present = sorted({l.status for l in lamellae if l.status} | {'(unset)'})
+        status_filter = st.multiselect('Filter by status', statuses_present)
+
+    def _matches(lamella) -> bool:
+        if name_filter and name_filter.lower() not in lamella.lamella_name.lower():
+            return False
+        if status_filter:
+            effective_status = lamella.status or '(unset)'
+            if effective_status not in status_filter:
+                return False
+        return True
+
+    filtered_lamellae = [l for l in lamellae if _matches(l)]
     rows = []
-    for lamella in lamellae:
+    for lamella in filtered_lamellae:
         annotations = store.get_annotations_for_lamella(db_path, lamella.id)
         rows.append({
             'name': lamella.lamella_name,
@@ -215,10 +232,11 @@ def main() -> None:
         })
     st.dataframe(rows, use_container_width=True)
 
-    for lamella in lamellae:
-        annotations = store.get_annotations_for_lamella(db_path, lamella.id)
-        for overlay in annotations['overlays']:
-            st.image(overlay.thumbnail_path, caption=f'{lamella.lamella_name} ({overlay.seg_type})')
+    with st.expanded(f'Overlay thumbnails ({len(filtered_lamellae)}) lamella(e) showsn', expanded=False):
+        for lamella in filtered_lamellae:
+            annotations = store.get_annotations_for_lamella(db_path, lamella.id)
+            for overlay in annotations['overlays']:
+                st.image(overlay.thumbnail_path, caption=f'{lamella.lamella_name} ({overlay.seg_type})')
 
 if __name__ == '__main__':
     main()
