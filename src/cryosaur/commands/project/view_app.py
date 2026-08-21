@@ -118,6 +118,19 @@ def _render_import_folder_form(db_path: str, sessions: list) -> None:
             help=_AUTO_REGISTER_HELP.get(path_kind, 'Select a folder kind first.'),
         )
 
+        if target != '<new session>':
+            current_session = store.get_session(db_path, session_names[target])
+            resolved_kind_preview = path_kind
+            current_value = current_session.paths.get(resolved_kind_preview)
+            if current_value:
+                use_col, current_col = st.columns([1,4])
+                with use_col:
+                    if st.button('Use current'):
+                        st.session_state['import_folder_path'] = current_value
+                        st.rerun()
+                with current_col:
+                    st.caption(f'Current {resolved_kind_preview!r} path: {current_value}')
+
         custom_kind = ''
         if path_kind == 'other':
             with st.popover('Advanced'):
