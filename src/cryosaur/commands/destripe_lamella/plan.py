@@ -4,57 +4,45 @@ CRYOSAUR: destrip-lamella plan builder logic
 
 # -- Import external dependencies
 from datetime import datetime, timezone
+from importlib.metadata import version as _pkg_version
 from pathlib import Path
 
 # -- Import cryosaur utilities
-from cryosaur.commands.destripe_lamella.bridge import build_bridging_star, parse_tilt_series_star_loop
-from cryosaur.utils.relion_adapter.job_star import extract_relion_headers, read_job_options, write_job_star
+from cryosaur.utils.config import load_config, resolve_resources
+from cryosaur.utils.errors import CryosaurError
+from cryosaur.utils.log import log
+from cryosaur.utils.relion_adapter.job_star import extract_relion_headers
 from cryosaur.utils.relion_adapter.lineage import build_lineage, write_lineage
-from cryosaur.utils.relion_adapter.pipeline_graph import PipelineGraph
-from cryosaur.utils.relion_adapter.plan import BridgingContract, PlannedStep, RunPlan, SlurmResourceProfile
-from cryosaur.utils.relion_adapter.rerun import STEP_JOB_TYPES
-
-# -- Map step name to job type for reruns
-STEP_JOB_TYPES['reconstruct'] = 'relion.reconstructtomograms'
-STEP_JOB_TYPES['denoise'] = 'relion.denoisetomo'
-STEP_JOB_TYPES['segment'] = 'membrain.segment'
-
-_BASELINE_RESOURCES = SlurmResourceProfile(
-    partition='cs05r',
-    gpus=4,
-    ntasks=1,
-    cpus_per_task=40,
-    mem_per_gpu='32000M',
-    time='72:00:00',
-    modules=[
-        'cuda/12.2',
-        'EM/AreTomo2/2024-09-05',
-        'EM/cryocare/0.3.0',
-        'EM/ctffind/4.1.14-rhel8',
-        'EM/Gctf/1.18',
-        'EM/icebreaker/0.3.5',
-        'EM/membrain-seg',
-        'EM/MotionCor2/1.6.3',
-        'EM/relion/5.0/2024-12-09',
-        'EM/topaz',
-        'fftw/3.3.8',
-        'gcc/11.2.0',
-        'hwloc/2.10.0',
-        'openmpi/4.1.2',
-    ],
+from cryosaur.utils.relion_adapter.note_log import (
+    NoteCommandError,
+    extract_flag_value,
+    find_command_for_tomogram,
+    read_note_commands,
+    substitute_paths,
 )
-
-_RESOLVE_TOKEN = '{{{{resolve:{job_type}}}}}'
+from cryosaur.utils.relion_adapter.pipeline_graph import PipelineGraph
+from cryosaur.utils.relion_adapter.plan import PlannedStep, RunPlan
 
 # -- Define constants for PyLisC
 _FILENAME_TEMPLATE = '{}_{position}_{}_{tilt}_{}_{}_{}_{}_{}.mrc'
 _PYLISC_SUFFIX = '_PyLisC_angular'  # hardcoded by pylisc
 _DESTRIPE_SUFFIX = '_destriped'      # cryosaur's own preferred naming, applied by a rename step below
 
-# -- _destripe_commands: runs pylisc over the whole input directory in one call, then renames every output file (.mrc and any accompanying files, e.g. .log) from pylisc's hardcoded _PyLisC_angular suffix to cryosaur's own _destriped suffix
-def _destripe_commands(input_dir: Path, output_dir: Path) -> list[str]:
+# -- _sequence_number: returns the acquisition sequence token (slot 2 of _FILENAME_TEMPLATE) from a micrograph filename, used to reorder destriped images before stacking
+def _sequence_number(filename: str) -> str:
+    token = Path(filename).stem.split('_')[2]
+    if not token.isdigit():
+        raise CryosaurError(f'Expected a numeric sequence token at position 2 of {filename!r}, got {token!r}')
+    return token
+
+# -- _tomogram_prefix_match: returns True if filename belongs to tomo_name
+def _tomogram_prefix_match(filename: str, tomo_name: str) -> bool:
+    return filename.startswith(f'{tomo_name}_')
+
+# -- _destripe_commands: runs pylisc over the whole input directory in one call, then renames every output file (.mrc and any accompanying files, e.g. .log) from pylisc's hardcoded _PyLisC_angular suffix to cryosaur's own _destriped
+def _destripe_commands(input_dir: Path, output_dir: Path, *, workers: int) -> list[str]:
     pylisc_command = (
-        f'pylisc frames --workers {8} --output-dir {output_dir} '
+        f'pylisc frames --workers {workers} --output-dir {output_dir} '
         f"--filename-template '{_FILENAME_TEMPLATE}' {input_dir}"
     )
     rename_command = (
@@ -63,154 +51,218 @@ def _destripe_commands(input_dir: Path, output_dir: Path) -> list[str]:
     )
     return [pylisc_command, rename_command]
 
-# -- _stage_relion_job: writes a job.star to fork_dir/cryosaur/staged/, returning the commands that resolve and then run it
-def _stage_relion_job(
-    fork_dir: Path, step_name: str, relion_job_type: str, options: dict[str, str], *, is_tomo: bool
+# -- _write_newstack_file_of_inputs: writes an IMOD "file of inputs" list for newstack -fileinlist
+def _write_newstack_file_of_inputs(list_path: Path, ordered_paths: list[Path]) -> None:
+    list_path.parent.mkdir(parents=True, exist_ok=True)
+    lines = [str(len(ordered_paths))] + [str(p) for p in ordered_paths]
+    list_path.write_text('\n'.join(lines) + '\n')
+
+# -- _stack_command: assembles one tomogram's destriped micrographs, in original tilt-acquisition order, into a single stack via newstack
+def _stack_command(tomo_name: str, ordered_destriped_paths: list[Path], stack_dir: Path) -> str:
+    list_path = stack_dir / f'{tomo_name}_inputs.txt'
+    _write_newstack_file_of_inputs(list_path, ordered_destriped_paths)
+    output_path = stack_dir / f'{tomo_name}_stack.mrc'
+    return f'newstack -fileinlist {list_path} -output {output_path}'
+
+# -- _reconstruct_commands: adapts the source project's AreTomo3 note.txt command for this tomogram to the fork's paths, switching -Cmd 1 (recompute) vs -Cmd 2 (reuse existing alignment) per reuse_alignment
+def _reconstruct_commands(
+    *,
+    note_line: str,
+    tomo_name: str,
+    new_stack_path: Path,
+    new_outdir: Path,
+    reuse_alignment: bool,
+    source_stack_dir: Path,
 ) -> list[str]:
-    staged_path = fork_dir / 'cryosaur' / 'staged' / f'{step_name}.star'
-    write_job_star(relion_job_type, options, staged_path, is_tomo=is_tomo)
-    return [
-        f'cryosaur internal resolve-star-path --fork-dir {fork_dir} --job-star {staged_path}',
-        f'cd {fork_dir} && pipeliner --run_job {staged_path.relative_to(fork_dir)}',
+    old_stack_path = extract_flag_value(note_line, '-InPrefix')
+    old_outdir = extract_flag_value(note_line, '-OutDir')
+    command = substitute_paths(note_line, [(old_stack_path, str(new_stack_path)), (old_outdir, str(new_outdir))])
+
+    if not reuse_alignment:
+        return [command]
+
+    # -Cmd 2 needs the source project's .aln and _TLT.txt copied alongside the new destriped stack, matched by filename stem
+    stem = f'{tomo_name}_stack'
+    copy_commands = [
+        f'cp {source_stack_dir / f"{stem}.aln"} {new_outdir / f"{stem}.aln"}',
+        f'cp {source_stack_dir / f"{stem}_TLT.txt"} {new_outdir / f"{stem}_TLT.txt"}',
     ]
+    reconstruct_command = command.replace('-Cmd 1', '-Cmd 2')
+    return copy_commands + [reconstruct_command]
 
-# -- _read_source_alignment: returns the source project's tomogram list and the (tomo_name, micrograph_path) pairs its per-tilt STAR files reference
-def _read_source_alignment(
-    source_project: Path, aligned_tilt_series: Path
-) -> tuple[list[str], list[tuple[str, str]]]:
-    top_columns, top_rows = parse_tilt_series_star_loop(aligned_tilt_series)
-    name_column = top_columns.index('rlnTomoName')
-    star_file_column = top_columns.index('rlnTomoTiltSeriesStarFile')
+# -- _denoise_commands: adapts the source project's topaz note.txt line to the fork's paths
+def _denoise_commands(note_line: str, new_input: Path, new_outdir: Path) -> list[str]:
+    parts = note_line.split()
+    old_input = parts[2]  # positional: topaz denoise3d <input> ...
+    old_outdir = extract_flag_value(note_line, '-o')
+    command = substitute_paths(note_line, [(old_input, str(new_input)), (old_outdir, str(new_outdir))])
+    return [command]
 
-    tomogram_names: list[str] = []
-    micrograph_pairs: list[tuple[str, str]] = []
-    for row in top_rows:
-        tomo_name = row[name_column]
-        tomogram_names.append(tomo_name)
-        columns, rows = parse_tilt_series_star_loop(source_project / row[star_file_column])
-        micrograph_column = columns.index('rlnMicrographName')
-        for tilt_row in rows:
-            micrograph_pairs.append((tomo_name, tilt_row[micrograph_column]))
-
-    return tomogram_names, micrograph_pairs
+# -- _segment_commands: adapts the source project's membrain note.txt line to the fork's paths
+def _segment_commands(note_line: str, new_input: Path, new_outdir: Path) -> list[str]:
+    old_input = extract_flag_value(note_line, '--tomogram-path')
+    old_outdir = extract_flag_value(note_line, '--out-folder')
+    command = substitute_paths(note_line, [(old_input, str(new_input)), (old_outdir, str(new_outdir))])
+    return [command]
 
 # -- build_plan: reads source_project, plans a destripe-lamella branch into fork_dir, and returns the RunPlan
-def build_plan(source_project: Path, fork_dir: Path) -> RunPlan:
+def build_plan(source_project: Path, fork_dir: Path, *, reuse_alignment: bool = True, cluster_resources: str | None = None) -> RunPlan:
+    log.info(f'Building plan from source project <cyan>{source_project}</cyan>')
+    baseline_resources = resolve_resources(load_config(), cluster_resources)
     graph = PipelineGraph.from_star(source_project)
     headers = extract_relion_headers(source_project / 'default_pipeline.star')
 
-    align_jobs = graph.jobs_of_type('relion.aligntiltseries.aretomo')
-    if not align_jobs:
-        raise ValueError(f'No relion.aligntiltseries.aretomo job found in {source_project}')
-    align_job = align_jobs[-1]
+    def _last_job(graph, job_type, source_project):
+        jobs = graph.jobs_of_type(job_type)
+        if not jobs:
+            log.error(f'No {job_type} job found in {source_project}')
+            raise CryosaurError(f'No {job_type} job found in {source_project}')
+        return jobs[-1]
 
-    lineage = build_lineage(source_project, graph, align_job.name)
+    exclude_tilts = _last_job(graph, 'relion.excludetilts', source_project)
+    source_reconstruct = _last_job(graph, 'relion.reconstructtomograms', source_project)
+    source_denoise = _last_job(graph, 'relion.denoisetomo', source_project)
+    source_segment = _last_job(graph, 'membrain.segment', source_project)
+
+    lineage = build_lineage(source_project, graph, source_reconstruct.name)
     write_lineage(lineage, fork_dir)
 
-    aligned_tilt_series = source_project / align_job.name / 'aligned_tilt_series.star'
-    tomogram_names, micrograph_pairs = _read_source_alignment(source_project, aligned_tilt_series)
+    # Read source_project's note.txt
+    reconstruct_notes = read_note_commands(source_project / source_reconstruct.name / 'note.txt')
+    denoise_notes = read_note_commands(source_project / source_denoise.name / 'note.txt')
+    segment_notes = read_note_commands(source_project / source_segment.name / 'note.txt')
 
-    # -- destripe: cryosaur's own external step, not a pipeliner job
+    # Read tomogram names from reconstruct_notes
+    tomogram_names = sorted(
+        {Path(extract_flag_value(line, '-InPrefix')).stem.removesuffix('_stack') for line in reconstruct_notes}, key=lambda n: int(n.removeprefix('Position_')),
+    )
+
+    # Define job directories
     destripe_job_dir = fork_dir / 'PyLisC' / 'job001'
     destripe_output_dir = destripe_job_dir / 'destriped'
+    stack_dir = fork_dir / 'Stack' / 'job002'
+    reconstruct_dir = fork_dir / 'Tomograms' / 'job003'
+    denoise_dir = fork_dir / 'Denoise' / 'job004'
+    segment_dir = fork_dir / 'Segmentation' / 'job005'
 
-    # Assert the expected flat directory layout
-    micrograph_dirs = {str(Path(path).parent) for _, path in micrograph_pairs}
-    if len(micrograph_dirs) != 1:
-        raise ValueError(
-            f'Expected all source micrographs to share one parent directory for a single pylisc frames call, found {len(micrograph_dirs)}: {micrograph_dirs}'
-        )
-    destripe_input_dir = source_project / micrograph_dirs.pop()
+    # Group micrographs by tomogram, sorted into original acquisition order, for destripe's expected_outputs and stack's input lists
+    destripe_input_dir = source_project / exclude_tilts.name / 'tilts'
+    micrographs_by_tomogram: dict[str, list[Path]] = {name: [] for name in tomogram_names}
+    for micrograph in sorted(destripe_input_dir.glob('*.mrc')):
+        for name in tomogram_names:
+            if _tomogram_prefix_match(micrograph.name, name):
+                micrographs_by_tomogram[name].append(micrograph)
+                break
+    for name in tomogram_names:
+        micrographs_by_tomogram[name].sort(key=lambda p: _sequence_number(p.name))
+    log.progress(f'Mapped {sum(len(value) for value in micrographs_by_tomogram.values())} micrograph(s) to {len(micrographs_by_tomogram.keys())} tomogram(s)')
 
-    destriped_micrograph_for: dict[tuple[str, str], str] = {}
-    for tomo_name, original_path in micrograph_pairs:
-        new_path = destripe_output_dir / f'{Path(original_path).stem}{_DESTRIPE_SUFFIX}.mrc'
-        destriped_micrograph_for[(tomo_name, original_path)] = str(new_path.relative_to(fork_dir))
+    def _destriped_path(micrograph: Path) -> Path:
+        return destripe_output_dir / f'{micrograph.stem}{_DESTRIPE_SUFFIX}.mrc'
 
+    # -- destripe step
+    destripe_resources = baseline_resources.model_copy(update={'gpus': 0, 'cpus_per_task': 12, 'mem_per_gpu': None, 'mem_per_cpu': '4G'})
     destripe_step = PlannedStep(
         name='destripe',
         kind='external',
         job_dir=destripe_job_dir,
         depends_on=[],
         array_over=None,  # pylisc frames processes the whole directory in one call
-        commands=_destripe_commands(destripe_input_dir, destripe_output_dir),
-        expected_outputs=[fork_dir / p for p in destriped_micrograph_for.values()],
-        resources=_BASELINE_RESOURCES.model_copy(update={'gpus': 0, 'cpus_per_task': 8, 'mem_per_gpu': None, 'mem_per_cpu': '4000M'}),
+        commands=_destripe_commands(destripe_input_dir, destripe_output_dir, workers=destripe_resources.cpus_per_task),
+        expected_outputs=[_destriped_path(m) for micrographs in micrographs_by_tomogram.values() for m in micrographs],
+        resources=destripe_resources,
     )
 
-    # bridging STAR
-    contract = BridgingContract()
-    bridging_job_dir = fork_dir / 'cryosaur' / 'bridge'
-    bridging_star = build_bridging_star(
-        source_project=source_project,
-        source_aligned_tilt_series=aligned_tilt_series,
-        fork_dir=fork_dir,
-        fork_job_dir=bridging_job_dir,
-        destriped_micrograph_for=destriped_micrograph_for,
-        contract=contract,
+    # -- stack step
+    stack_commands: list[str] = []
+    stack_outputs: list[Path] = []
+    for name in tomogram_names:
+        ordered_destriped = [_destriped_path(m) for m in micrographs_by_tomogram[name]]
+        stack_commands.append(_stack_command(name, ordered_destriped, stack_dir))
+        stack_outputs.append(stack_dir / f'{name}_stack.mrc')
+    stack_step = PlannedStep(
+        name='stack',
+        kind='external',
+        job_dir=stack_dir,
+        array_over=None,  # process all in one script
+        depends_on=['destripe'],
+        commands=stack_commands,
+        expected_outputs=stack_outputs,
+        resources=baseline_resources.model_copy(update={'gpus': 0, 'cpus_per_task': 12, 'mem_per_gpu': None, 'mem_per_cpu': '4G'})
     )
 
-    staged_dir = fork_dir / 'cryosaur' / 'staged'
-
-    # -- reconstruct
-    source_reconstruct = graph.jobs_of_type('relion.reconstructtomograms')[-1]
-    reconstruct_options = read_job_options(source_project / source_reconstruct.name / 'job.star')
-    reconstruct_options['in_tiltseries'] = str(bridging_star.relative_to(fork_dir))
-    reconstruct_commands = _stage_relion_job(
-        fork_dir, 'reconstruct', 'relion.reconstructtomograms', reconstruct_options, is_tomo=False
-    )
+    # -- reconstruct step
+    source_reconstruct_stack_dir = source_project / source_reconstruct.name / 'tomograms'
+    reconstruct_commands: list[str] = []
+    reconstruct_outputs: list[Path] = []
+    for name in tomogram_names:
+        note_line = find_command_for_tomogram(reconstruct_notes, name)
+        reconstruct_commands.extend(
+            _reconstruct_commands(
+                note_line=note_line,
+                tomo_name=name,
+                new_stack_path=stack_dir / f'{name}_stack.mrc',
+                new_outdir=reconstruct_dir,
+                reuse_alignment=reuse_alignment,
+                source_stack_dir=source_reconstruct_stack_dir,
+            )
+        )
+        reconstruct_outputs.append(reconstruct_dir / f'{name}_stack_Vol.mrc')
     reconstruct_step = PlannedStep(
         name='reconstruct',
-        kind='relion',
-        job_dir=staged_dir,
-        depends_on=['destripe'],
+        kind='external',
+        job_dir=reconstruct_dir,
+        array_over=None,  # process all in one script
+        depends_on=['stack'],
         commands=reconstruct_commands,
-        expected_outputs=[],  # not knowable until pipeliner runs it - see rerun.py
-        resources=_BASELINE_RESOURCES.model_copy(update={'gpus': 0, 'mem_per_gpu': None, 'mem': '16G'}),
+        expected_outputs=reconstruct_outputs,
+        resources=baseline_resources.model_copy(),
     )
 
-    # -- denoise
-    source_denoise = graph.jobs_of_type('relion.denoisetomo')[-1]
-    denoise_options = read_job_options(source_project / source_denoise.name / 'job.star')
-    denoise_options['in_tomoset'] = _RESOLVE_TOKEN.format(job_type='relion.reconstructtomograms')
-    denoise_commands = _stage_relion_job(
-        fork_dir, 'denoise', 'relion.denoisetomo', denoise_options, is_tomo=True
-    )
+    # -- denoise: topaz, one note.txt-derived command per tomogram
+    denoise_commands: list[str] = []
+    denoise_outputs: list[Path] = []
+    for name, reconstruct_output in zip(tomogram_names, reconstruct_outputs):
+        note_line = find_command_for_tomogram(denoise_notes, name)
+        denoise_commands.extend(_denoise_commands(note_line, new_input=reconstruct_output, new_outdir=denoise_dir))
+        denoise_outputs.append(denoise_dir / f'{reconstruct_output.stem}.denoised.mrc')
     denoise_step = PlannedStep(
         name='denoise',
-        kind='relion',
-        job_dir=staged_dir,
+        kind='external',
+        job_dir=denoise_dir,
+        array_over=None,  # process all in one script
         depends_on=['reconstruct'],
         commands=denoise_commands,
-        expected_outputs=[],
-        resources=_BASELINE_RESOURCES.model_copy(update={'gpus': 1, 'mem_per_gpu': None, 'mem': '16G'}),
+        expected_outputs=denoise_outputs,
+        resources=baseline_resources.model_copy(),
     )
 
-    # -- segment
-    source_segment = graph.jobs_of_type('membrain.segment')[-1]
-    segment_options = read_job_options(source_project / source_segment.name / 'job.star')
-    segment_options['in_tomoset'] = _RESOLVE_TOKEN.format(job_type='relion.denoisetomo')
-    segment_commands = _stage_relion_job(
-        fork_dir, 'segment', 'membrain.segment', segment_options, is_tomo=True
-    )
+    # -- segment: membrain, one note.txt-derived command per tomogram
+    segment_commands: list[str] = []
+    segment_outputs: list[Path] = []
+    for name, denoise_output in zip(tomogram_names, denoise_outputs):
+        note_line = find_command_for_tomogram(segment_notes, name)
+        segment_commands.extend(_segment_commands(note_line, new_input=denoise_output, new_outdir=segment_dir))
+        segment_outputs.append(segment_dir / f'{denoise_output.stem}_segmented.mrc')
     segment_step = PlannedStep(
         name='segment',
-        kind='relion',
-        job_dir=staged_dir,
+        kind='external',
+        job_dir=segment_dir,
         depends_on=['denoise'],
         commands=segment_commands,
-        expected_outputs=[],
-        resources=_BASELINE_RESOURCES.model_copy(update={'gpus': 1, 'mem_per_gpu': None, 'mem': '16G'}),
+        expected_outputs=segment_outputs,
+        resources=baseline_resources.model_copy(),
     )
 
-    return RunPlan(
+    plan = RunPlan(
         source_project=source_project,
         source_read_at=datetime.now(timezone.utc),
         source_relion_version=headers.relion_version,
         source_pipeliner_version=headers.pipeliner_version,
         fork_dir=fork_dir,
-        branch_point=align_job.name,
-        bridging_contract=contract,
-        cryosaur_version='0.1.0',
-        steps=[destripe_step, reconstruct_step, denoise_step, segment_step],
+        branch_point=source_reconstruct.name,
+        cryosaur_version=_pkg_version('cryosaur'),
+        steps=[destripe_step, stack_step, reconstruct_step, denoise_step, segment_step],
     )
+    log.info(f'Built plan with {len(plan.steps)} step(s): {", ".join(s.name for s in plan.steps)}')
+    return plan

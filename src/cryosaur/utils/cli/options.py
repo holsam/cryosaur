@@ -42,3 +42,15 @@ OnlyStepOption = Annotated[
     str | None,
     typer.Option('--only', help='Re-submit just this step, using the existing plan.', show_default=False, rich_help_panel='Pipeline Options'),
 ]
+
+# -- ClusterResourcesOption: option expecting string or None
+ClusterResourcesOption = Annotated[
+    str | None,
+    typer.Option('--cluster-resources', help="Use a [cluster.resources.<id>] profile instead of the config's default resources.", show_default=False, rich_help_panel='Pipeline Options'),
+]
+
+# -- DbPathOption: option expecting Path or None
+DbPathOption = Annotated[
+    Path | None,
+    typer.Option('--db-path', help="Path to the annotation SQLite database (defaults to the config's [project] db_path, or project.db next to config.toml).", show_default=False, rich_help_panel='Project Options'),
+]

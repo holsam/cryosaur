@@ -10,7 +10,10 @@ from typing import Annotated
 # -- Import cryosaur utilities
 from cryosaur.commands.trim_vol.pipeline import run_trim_pipeline
 from cryosaur.commands.trim_vol.preview import build_preview
+from cryosaur.commands.trim_vol.submit import build_submission_script, submit_job
 from cryosaur.utils.cli.registry import register
+from cryosaur.utils.cli.options import ClusterResourcesOption
+from cryosaur.utils.cluster.cluster import confirm_local_run
 from cryosaur.utils.errors import CryosaurError, handle_errors
 from cryosaur.utils.io import _resolve_input_paths
 from cryosaur.utils.log import log
@@ -51,10 +54,12 @@ def run_local(
             result.filtered_for_pitch,
             result.pitch_model,
         ):
+            if not intermediate.exists():
+                log.warning(f'Intermediate <cyan>{intermediate}</cyan> missing before cleanup')
             intermediate.unlink(missing_ok=True)
         log.info(f'  <cyan>{mrc_path.name}</cyan> -> {final_path}')
 
-@register('trim-vol')
+@register('trim-vol', panel='Tools')
 @handle_errors
 def trim_command(
     input_path: Annotated[
@@ -77,6 +82,7 @@ def trim_command(
         str | None,
         typer.Option('--cluster', help='Submit via the named scheduler backend (e.g. slurm) instead of running locally.'),
     ] = None,
+    cluster_resources: ClusterResourcesOption = None,
     preview: Annotated[
         bool,
         typer.Option('--preview', help='Run the pipeline into scratch and produce a stitched comparison image.'),
@@ -95,7 +101,7 @@ def trim_command(
 
     if cluster is not None:
         for mrc_path in mrc_paths:
-            script_path = build_submission_script(mrc_path, resolved_output_dir, lowpass_radius, lowpass_sigma, lowpass_units, cluster)
+            script_path = build_submission_script(mrc_path, resolved_output_dir, lowpass_radius, lowpass_sigma, lowpass_units, cluster, cluster_resources)
             submit_job(script_path, cluster)
         return
 

@@ -12,6 +12,7 @@ from typing import Annotated, List
 
 # -- Import cryosaur utilties
 from cryosaur.utils.cli.registry import register
+from cryosaur.utils.log import log
 
 # -- Dependency: dataclass holding information about a given dependency
 @dataclass
@@ -25,11 +26,10 @@ class Dependency:
         return which(self.binary) is not None
 
 # -- _COMMAND_DEPENDENCIES: dictionary containing each requirement for a cryosaur command
-# TODO: check destripe_lamella
 _COMMAND_DEPENDENCIES: dict[str, list[Dependency]] = {
     'destripe-lamella': [
         Dependency('PyLisC', 'pylisc', 'uv tool install git+https://github.com/holsam/pylisc'),
-        Dependency('CCP-EM Pipeliner', 'pipeliner', 'uv tool install git+https://gitlab.com/ccpem/ccpem-pipeliner'),
+        Dependency('newstack (IMOD)', 'newstack', ''),
         Dependency('RELION5', 'relion', ''),
         Dependency('Topaz', 'topaz', ''),
         Dependency('MemBrain-Seg', 'membrain', ''),
@@ -51,6 +51,7 @@ def print_dependency_table(commands):
         console.print()
         deps = _COMMAND_DEPENDENCIES.get(command, [])
         if not deps:
+            log.info(f'No dependencies registered for command <cyan>{command}</cyan>')
             continue
         none_missing = all(dep.available for dep in deps)
         header_style= 'green' if none_missing else 'red'

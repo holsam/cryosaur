@@ -37,6 +37,7 @@ def _submit_step(step: PlannedStep, *, depends_on: list[str] | None = None) -> s
 # -- submit_steps: submits a list of steps as a SLURM dependency chain (in the order given), returning step name to SLURM job id
 def submit_steps(steps: list[PlannedStep]) -> dict[str, str]:
     job_ids: dict[str, str] = {}
+    log.progress(f'Starting {len(steps)}-step submission chain')
     for step in steps:
         depends_on = [job_ids[name] for name in step.depends_on if name in job_ids]
         job_ids[step.name] = _submit_step(step, depends_on=depends_on)
@@ -75,15 +76,20 @@ def submit_single_job(steps: list[PlannedStep], fork_dir: Path) -> dict[str, str
     script_path = fork_dir / 'cryosaur' / 'single_job.sh'
     script_path.parent.mkdir(parents=True, exist_ok=True)
     script_path.write_text(render_single_job_script(steps))
+    log.progress(f'Submitting single-job script for {len(steps)} step(s): {script_path}')
     result = subprocess.run(['sbatch', '--parsable', str(script_path)], capture_output=True, text=True)
     if result.returncode != 0:
+        log.error(f'sbatch failed for single-job submission: {result.stderr.strip()}')
         raise SubmissionError(f'sbatch failed for single-job submission: {result.stderr.strip()}')
     job_id = result.stdout.strip()
+    log.debug(f'Submitted single-job script as SLURM job <cyan>{job_id}</cyan>')
     return {step.name: job_id for step in steps}
 
 
 # -- submit_plan: submits every step in a plan, honouring --single-job, returning step name to SLURM job id
 def submit_plan(plan: RunPlan, *, single_job: bool = False) -> dict[str, str]:
     if single_job:
+        log.info(f'Submitting plan as a single job ({len(plan.steps)} step(s))')
         return submit_single_job(plan.steps, plan.fork_dir)
+    log.info(f'Submitting plan as a {len(plan.steps)}-step dependency chain')
     return submit_steps(plan.steps)

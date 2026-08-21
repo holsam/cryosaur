@@ -82,7 +82,8 @@ def flatten_directory(
                 break
         
     # Loop over each file, creating symlinks
-    for s in symlinks.items():
+    for i, s in enumerate(symlinks.items(), start=1):
+        log.progress(f'[{i}/{len(symlinks)}] Linking <cyan>{s[0]}</cyan>')
         _create_symlink(original=s[0], link=s[1])
     log.info(f'Created {len(symlinks.values())} in <cyan>{output_directory}</cyan>')
 
@@ -116,4 +117,4 @@ def _create_symlink(original: Path, link: Path):
         os.symlink(src=original, dst=link)
         log.debug(f'Created symlink {link} for {original}')
     except FileExistsError as e:
-        log.warning(f'Could not create symlink {dst} for {src}: {e}')
+        log.warning(f'Could not create symlink {link} for {original}: {e}')

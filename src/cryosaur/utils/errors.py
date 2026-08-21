@@ -19,9 +19,15 @@ class CryosaurError(Exception):
 def handle_errors(func: Callable) -> Callable:
     @wraps(func)
     def wrapper(*args, **kwargs):
+        log.info(f'Running <cyan>{func.__name__}</cyan>')
         try:
-            return func(*args, **kwargs)
+            result = func(*args, **kwargs)
         except CryosaurError as exc:
             log.error(str(exc))
+            log.info('cryosaur completed with exit code 1')
+            print()
             raise typer.Exit(code=1)
+        log.info('cryosaur completed with exit code 0')
+        print()
+        return result
     return wrapper

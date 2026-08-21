@@ -12,15 +12,6 @@ from typing import Literal
 from cryosaur.utils.errors import CryosaurError
 from cryosaur.utils.cluster.slurm import SlurmResourceProfile
 
-# -- BridgingContract: declares which parts of the source project's tilt series metadata a command's steps leave unchanged
-class BridgingContract(BaseModel):
-    preserves_pixel_size: bool = True
-    preserves_tilt_count: bool = True
-    preserves_tilt_order: bool = True
-    preserves_alignment: bool = True
-    preserves_ctf: bool = True
-    preserves_dose: bool = True
-
 # -- PlannedStep: one step of a branch, either a real RELION job or an external tool
 class PlannedStep(BaseModel):
     name: str
@@ -40,7 +31,6 @@ class RunPlan(BaseModel):
     source_pipeliner_version: str
     fork_dir: Path
     branch_point: str
-    bridging_contract: BridgingContract
     cryosaur_version: str
     steps: list[PlannedStep]
 

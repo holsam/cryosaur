@@ -10,12 +10,22 @@
 {% endif -%}
 {% if resources.mem_per_gpu -%}
 #SBATCH --mem-per-gpu={{ resources.mem_per_gpu }}
+{% elif resources.mem_per_cpu -%}
+#SBATCH --mem-per-cpu={{ resources.mem_per_cpu }}
 {% elif resources.mem -%}
 #SBATCH --mem={{ resources.mem }}
 {% endif -%}
-#SBATCH --output={{ log_path }}
-
+{% if array_over -%}
+#SBATCH --array=0-{{ (array_over | length) - 1 }}
+{% endif -%}
+#SBATCH --output={{ log_path }}.out
+#SBATCH --error={{ log_path }}.err
+ 
 {% for module in resources.modules -%}
 module load {{ module }}
 {% endfor %}
 {{ command }}
+
+{% for command in commands %}
+{{ command }}
+{% endfor %}

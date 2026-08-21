@@ -7,6 +7,8 @@ from enum import Enum
 from pathlib import Path
 from pydantic import BaseModel, Field
 
+# -- Import cryosaur utilities
+from cryosaur.utils.log import log
 
 # -- JobStatus: class defining cryosaur job statuses, mapped from RELION's own status labels
 class JobStatus(str, Enum):
@@ -73,12 +75,15 @@ class PipelineGraph:
         jobs: dict[str, PipelineJob] = {}
         for row in processes.itertuples():
             alias = getattr(row, 'rlnPipeLineProcessAlias', 'None')
+            if not hasattr(row, 'rlnPipeLineProcessAlias'):
+                log.debug(f'{row.rlnPipeLineProcessName}: no rlnPipeLineProcessAlias column, defaulting to None')
             jobs[row.rlnPipeLineProcessName] = PipelineJob(
                 name=row.rlnPipeLineProcessName,
                 job_type=row.rlnPipeLineProcessTypeLabel,
                 alias=None if alias == 'None' else alias,
                 status=_status_from_relion(row.rlnPipeLineProcessStatusLabel),
             )
+            log.debug(f'Parsed {len(jobs)} job(s) from {star_path}')
 
         for row in input_edges.itertuples():
             jobs[row.rlnPipeLineEdgeProcess].input_nodes.append(

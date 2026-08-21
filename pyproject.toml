@@ -1,6 +1,6 @@
 [project]
 name = "cryosaur"
-version = "0.3.0"
+version = "0.4.0"
 description = "Resources and scripts for investigating ultrastructure using in situ cryoEM"
 readme = "README.md"
 authors = [
@@ -20,6 +20,15 @@ dependencies = [
 
 [project.scripts]
 cryosaur = "cryosaur.cli:cryosaur"
+
+[project.optional-dependencies]
+project = [
+    "pyside6>=6.5.0",
+    "pyvista>=0.43.0",
+    "pyvistaqt>=0.9.0",
+    "streamlit>=1.38.0",
+    "tomli-w>=1.0.0",
+]
 
 [build-system]
 requires = ["uv_build>=0.11.26,<0.12.0"]

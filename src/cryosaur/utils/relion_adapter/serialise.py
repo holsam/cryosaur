@@ -6,6 +6,7 @@ CRYOSAUR: run plan serialisation
 from pathlib import Path
 
 # -- Import cryosaur utilities
+from cryosaur.utils.errors import CryosaurError
 from cryosaur.utils.log import log
 from cryosaur.utils.relion_adapter.plan import RunPlan
 
@@ -27,5 +28,6 @@ def write_plan(plan: RunPlan) -> Path:
 def read_plan(fork_dir: Path) -> RunPlan:
     path = plan_path(fork_dir)
     if not path.exists():
+        log.error(f'No plan found at <cyan>{path}</cyan>')
         raise CryosaurError(f'No plan found at {path}')
     return RunPlan.model_validate_json(path.read_text())

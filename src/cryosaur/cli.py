@@ -57,18 +57,28 @@ def logging_callback(
 # -- _GROUP_HELP: dictionary containing help text for any sub-Typers 
 _GROUP_HELP = {
     'utils': 'Misc cryosaur utilities.',
-    'internal': 'Internal cryosaur commands.',
+    'config': 'Manage the cryosaur configuration file.',
+    'project': 'Manage a cryosaur project.',
+    'session': 'Manage a cryosaur project session.'
+}
+
+# -- _GROUP_HELP_PANELS: dictionary containing Rich help panels for any sub-Typers 
+_GROUP_HELP_PANELS = {
+    'utils': 'Utilities',
+    'config': 'Utilities',
+    'project': 'Project Management',
+    'session': 'Project Management'
 }
 
 # -- Attach every registered command onto the main Typer app, grouping any with a `group` set under their own nested Typer app
 _group_apps: dict[str, typer.Typer] = {}
 
-for _name, _registered in registered_commands().items():
+for (_, _name), _registered in registered_commands().items():
     _wrapped = handle_errors(_registered.func)
     if _registered.group is None:
-        cryosaur.command(name=_name, hidden=_registered.hidden)(_wrapped)
+        cryosaur.command(name=_name, hidden=_registered.hidden, rich_help_panel=_registered.panel)(_wrapped)
     else:
         if _registered.group not in _group_apps:
             _group_apps[_registered.group] = typer.Typer(no_args_is_help=True)
-            cryosaur.add_typer(_group_apps[_registered.group], name=_registered.group, help=_GROUP_HELP.get(_registered.group, ''))
-        _group_apps[_registered.group].command(name=_name, hidden=_registered.hidden)(_wrapped)
+            cryosaur.add_typer(_group_apps[_registered.group], name=_registered.group, help=_GROUP_HELP.get(_registered.group, ''), rich_help_panel=_GROUP_HELP_PANELS.get(_registered.group))
+        _group_apps[_registered.group].command(name=_name, hidden=_registered.hidden, rich_help_panel=_registered.panel)(_wrapped)
