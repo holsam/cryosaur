@@ -12,12 +12,11 @@ def validate(plan: RunPlan) -> list[str]:
     if not plan.source_project.exists():
         problems.append(f'Source project no longer exists at {plan.source_project}')
 
-    staged_dir = plan.fork_dir / 'cryosaur' / 'staged'
     for step in plan.steps:
-        if step.kind == 'relion':
-            staged_path = staged_dir / f'{step.name}.star'
-            if not staged_path.exists():
-                problems.append(f"{step.name}: staged job.star not found at {staged_path}")
+        if not step.commands:
+            problems.append(f'{step.name}: no commands found for this step')
+        if not step.expected_outputs:
+            problems.append(f'{step.name}: no expected outputs found for this step')
 
     if not plan.fork_dir.exists():
         problems.append(f'Fork directory does not exist: {plan.fork_dir}')
