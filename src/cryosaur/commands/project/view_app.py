@@ -8,7 +8,7 @@ import streamlit as st
 from pathlib import Path
 
 # -- Import cryosaur utilities
-from cryosaur.utils.error import CryosaurError
+from cryosaur.utils.errors import CryosaurError
 from cryosaur.utils.project import import_folder, store, toml_io
 
 # -- _PATH_KINDS: preset session.paths keys offered in the import-folder form
