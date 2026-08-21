@@ -71,7 +71,7 @@ _GROUP_HELP_PANELS = {
 # -- Attach every registered command onto the main Typer app, grouping any with a `group` set under their own nested Typer app
 _group_apps: dict[str, typer.Typer] = {}
 
-for _name, _registered in registered_commands().items():
+for (_, _name), _registered in registered_commands().items():
     _wrapped = handle_errors(_registered.func)
     if _registered.group is None:
         cryosaur.command(name=_name, hidden=_registered.hidden, rich_help_panel=_registered.panel)(_wrapped)
