@@ -1,5 +1,5 @@
 '''
-CRYOSAUR: SQLite-backed annotation store, shared by `project annotate`, `project render` and (read-only) `project view`
+CRYOSAUR: SQLite-backed annotation store
 '''
 
 # -- Import external dependencies
@@ -329,3 +329,26 @@ def delete_overlay(db_path: Path, overlay_id: int) -> None:
         cursor = conn.execute('DELETE FROM overlays WHERE id = ?', (overlay_id,))
     if cursor.rowcount == 0:
         raise CryosaurError(f'No overlay with id <cyan>{overlay_id}</cyan>')
+
+# -- update_session: returns the updated SessionRecord, changing only the fields explicitly passed
+def update_session(
+    db_path: Path,
+    session_id: str,
+    session_name: str | None = _UNSET,
+    paths: dict[str, str] | None = _UNSET,
+) -> SessionRecord:
+    if get_session(db_path, session_id) is None:
+        raise CryosaurError(f'No session <cyan>{session_id}</cyan>')
+
+    fields: dict[str, str] = {}
+    if session_name is not _UNSET:
+        fields['session_name'] = session_name
+    if paths is not _UNSET:
+        fields['paths'] = json.dumps(paths)
+    if not fields:
+        return get_session(db_path, session_id)
+
+    set_clause = ', '.join(f'{key} = ?' for key in fields)
+    with _connect(db_path) as conn:
+        conn.execute(f'UPDATE sessions SET {set_clause}, updated_at = datetime("now") WHERE session_id = ?', (*fields.values(), session_id))
+    return get_session(db_path, session_id)
