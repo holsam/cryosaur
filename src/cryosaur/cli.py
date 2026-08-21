@@ -57,7 +57,6 @@ def logging_callback(
 # -- _GROUP_HELP: dictionary containing help text for any sub-Typers 
 _GROUP_HELP = {
     'utils': 'Misc cryosaur utilities.',
-    'internal': 'Internal cryosaur commands.',
     'config': 'Manage the cryosaur configuration file.',
     'project': 'cryosaur project management commands.'
 }
@@ -65,7 +64,6 @@ _GROUP_HELP = {
 # -- _GROUP_HELP_PANELS: dictionary containing Rich help panels for any sub-Typers 
 _GROUP_HELP_PANELS = {
     'utils': 'Utilities',
-    'internal': 'Utilities',
     'config': 'Utilities',
     'project': 'Projects'
 }
