@@ -4,6 +4,7 @@ CRYOSAUR: `destripe-lamella` command CLI
 
 # -- Import external dependencies
 from functools import partial
+from typing import Annotated
 
 # -- Import cryosaur utilities
 from cryosaur.commands.destripe_lamella.plan import build_plan
@@ -24,6 +25,12 @@ from cryosaur.utils.relion_adapter.rerun import resolve_steps_to_submit
 from cryosaur.utils.relion_adapter.serialise import read_plan, write_plan
 from cryosaur.utils.relion_adapter.submit import submit_plan, submit_steps
 
+# -- Define ReuseAlignment option
+ReuseAlignmentOption = Annotated[
+    bool,
+    typer.Option('--reuse-alignment/--realign', help='Reuse the source project\'s existing AreTomo3 alignment parameters rather than recomputing them from the destriped stack.', rich_help_panel='Branch Options'),
+]
+
 # -- _submit_single_job: adapts submit_plan's single_job path to run_command's expected shape
 def _submit_single_job(plan) -> dict[str, str]:
     return submit_plan(plan, single_job=True)
@@ -34,6 +41,7 @@ def destripe_lamella_command(
     source: SourceProjectArg,
     fork_dir: ForkDirOption = None,
     dry_run: DryRunOption = False,
+    reuse_alignment: ReuseAlignmentOption = True,
     single_job: SingleJobOption = False,
     from_step: FromStepOption = None,
     only_step: OnlyStepOption = None,
@@ -44,7 +52,7 @@ def destripe_lamella_command(
     '''
     run_command(
         derive_fork_dir=derive_fork_dir,
-        build_plan=partial(build_plan, cluster_resources=cluster_resources),
+        build_plan=partial(build_plan, cluster_resources=cluster_resources, reuse_alignment=reuse_alignment),
         validate=validate,
         write_plan=write_plan,
         read_plan=read_plan,
