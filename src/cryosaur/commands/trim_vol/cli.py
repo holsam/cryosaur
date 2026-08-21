@@ -59,7 +59,7 @@ def run_local(
             intermediate.unlink(missing_ok=True)
         log.info(f'  <cyan>{mrc_path.name}</cyan> -> {final_path}')
 
-@register('trim-vol')
+@register('trim-vol', panel='Tools')
 @handle_errors
 def trim_command(
     input_path: Annotated[

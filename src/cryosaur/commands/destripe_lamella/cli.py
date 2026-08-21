@@ -37,7 +37,7 @@ def _submit_single_job(plan) -> dict[str, str]:
     return submit_plan(plan, single_job=True)
 
 # -- destripe_lamella_command: destripes per-tilt micrographs with PyLisC, then reconstructs, denoises and segments from the cleaned images, reusing the existing alignment
-@register('destripe-lamella')
+@register('destripe-lamella', panel='Pipelines')
 def destripe_lamella_command(
     source: SourceProjectArg,
     fork_dir: ForkDirOption = None,
