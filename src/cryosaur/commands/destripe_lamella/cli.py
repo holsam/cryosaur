@@ -3,6 +3,7 @@ CRYOSAUR: `destripe-lamella` command CLI
 '''
 
 # -- Import external dependencies
+import typer
 from functools import partial
 from typing import Annotated
 
