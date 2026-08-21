@@ -26,11 +26,10 @@ class Dependency:
         return which(self.binary) is not None
 
 # -- _COMMAND_DEPENDENCIES: dictionary containing each requirement for a cryosaur command
-# TODO: check destripe_lamella
 _COMMAND_DEPENDENCIES: dict[str, list[Dependency]] = {
     'destripe-lamella': [
         Dependency('PyLisC', 'pylisc', 'uv tool install git+https://github.com/holsam/pylisc'),
-        Dependency('CCP-EM Pipeliner', 'pipeliner', 'uv tool install git+https://gitlab.com/ccpem/ccpem-pipeliner'),
+        Dependency('newstack (IMOD)', 'newstack', ''),
         Dependency('RELION5', 'relion', ''),
         Dependency('Topaz', 'topaz', ''),
         Dependency('MemBrain-Seg', 'membrain', ''),
