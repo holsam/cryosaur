@@ -8,6 +8,7 @@ import streamlit as st
 from pathlib import Path
 
 # -- Import cryosaur utilities
+from cryosaur.utils.error import CryosaurError
 from cryosaur.utils.project import import_folder, store, toml_io
 
 # -- _PATH_KINDS: preset session.paths keys offered in the import-folder form
@@ -143,20 +144,38 @@ def _render_import_folder_form(db_path: str, sessions: list) -> None:
 def _render_toml_controls(db_path: str, session_id: str | None) -> None:
     export_col, import_col = st.columns(2)
     with export_col:
-        export_path = Path(db_path).with_suffix('.toml')
-        toml_io.export_session_to_toml(db_path, export_path, session_id)
-        st.download_button('Export session to TOML', export_path.read_bytes(), file_name=export_path.name)
+        export_bytes = toml_io.export_session_to_toml_bytes(db_path, session_id)
+        st.download_button('Export session to TOML', export_bytes, file_name=f'{session_id or {"all_sessions"}}.toml')
     with import_col:
         uploaded = st.file_uploader('Import TOML', type='toml')
-        if uploaded is not None and st.button('Run import'):
-            import tempfile
-            with tempfile.NamedTemporaryFile(suffix='.toml', delete=False) as tmp:
-                tmp.write(uploaded.getvalue())
-                tmp_path = Path(tmp.name)
-            toml_io.import_toml(db_path, tmp_path)
+        if uploaded is None:
+            return
+        import tempfile
+        with tempfile.NamedTemporaryFile(suffix='.toml', delete=False) as tmp:
+            tmp.write(uploaded.getvalue())
+            tmp_path = Path(tmp.name)
+        try:
+            plan = toml_io.plan_import(db_path, tmp_path)
+            on_conflict = 'skip'
+            if plan.has_conflicts:
+                st.warning(f'{len(plan.conflicting_sessions)} session(s), {len(plan.conflicting_lamellae)} lamella(e) already exist.')
+                for diff in plan.conflicting_sessions:
+                    st.table({'existing': [diff.existing_name, diff.existing_paths], 'incoming': [diff.incoming_name, diff.incoming_paths]})
+                for diff in plan.conflicting_lamellae:
+                    st.table({'existing': [diff.existing_status, diff.existing_notes, diff.existing_points, diff.existing_overlays], 'incoming': [diff.incoming_status, diff.incoming_notes, diff.incoming_points, diff.incoming_overlays]})
+                on_conflict = st.radio('For every conflict above', ['skip', 'replace'], horizontal=True)
+            else:
+                st.info(f'{len(plan.new_sessions)} new session(s), {len(plan.new_lamellae)} new lamella(e) will be imported.')
+            if st.button('Confirm import'):
+                try:
+                    summary = toml_io.apply_import(db_path, plan, on_conflict)
+                except CryosaurError as exc:
+                    st.error(str(exc))
+                else:
+                    st.success(f'Created {summary.sessions_created} session(s)/{summary.lamellae_created} lamella(e); {summary.sessions_replaced + summary.lamellae_replaced} replaced, {summary.sessions_skipped + summary.lamellae_skipped} skipped')
+                    st.rerun()
+        finally:
             tmp_path.unlink()
-            st.success('Imported. Reload to see the new records.')
-            st.rerun()
 
 # -- main: renders the dashboard
 def main() -> None:
