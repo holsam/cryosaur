@@ -27,7 +27,7 @@ def _parse_paths(entries: list[str]) -> dict[str, str]:
     return paths
 
 # -- session_create: creates a new session, optionally seeded with paths
-@register('session-create', group='project')
+@register('create', group='session')
 def session_create(
     name: Annotated[str, typer.Option('--name', help='Session name.')],
     path: Annotated[
@@ -47,7 +47,7 @@ def session_create(
     log.info(f'Created session <cyan>{session_id}</cyan> ({name!r})')
 
 # -- session_list: lists every session
-@register('session-list', group='project')
+@register('list', group='session')
 def session_list(db_path: DbPathOption = None):
     '''
     List every session in the annotation store.
@@ -62,7 +62,7 @@ def session_list(db_path: DbPathOption = None):
     Console().print(table)
 
 # -- session_show: prints one session's paths and lamellae
-@register('session-show', group='project')
+@register('show', group='session')
 def session_show(
     session_id: Annotated[str, typer.Argument(help='Session to show.')],
     db_path: DbPathOption = None,
@@ -85,7 +85,7 @@ def session_show(
     console.print(table)
 
 # -- session_delete: deletes a session and everything under it, after confirmation
-@register('session-delete', group='project')
+@register('delete', group='session')
 def session_delete(
     session_id: Annotated[str, typer.Argument(help='Session to delete.')],
     yes: Annotated[bool, typer.Option('--yes', help='Skip the confirmation prompt.', show_default=False)] = False,

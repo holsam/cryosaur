@@ -58,14 +58,16 @@ def logging_callback(
 _GROUP_HELP = {
     'utils': 'Misc cryosaur utilities.',
     'config': 'Manage the cryosaur configuration file.',
-    'project': 'cryosaur project management commands.'
+    'project': 'Manage a cryosaur project.',
+    'session': 'Manage a cryosaur project session.'
 }
 
 # -- _GROUP_HELP_PANELS: dictionary containing Rich help panels for any sub-Typers 
 _GROUP_HELP_PANELS = {
     'utils': 'Utilities',
     'config': 'Utilities',
-    'project': 'Projects'
+    'project': 'Project Management',
+    'session': 'Project Management'
 }
 
 # -- Attach every registered command onto the main Typer app, grouping any with a `group` set under their own nested Typer app
