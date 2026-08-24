@@ -28,12 +28,13 @@ _FILENAME_TEMPLATE = '{}_{position}_{}_{tilt}_{}_{}_{}_{}_{}.mrc'
 _PYLISC_SUFFIX = '_PyLisC_angular'  # hardcoded by pylisc
 _DESTRIPE_SUFFIX = '_destriped'      # cryosaur's own preferred naming, applied by a rename step below
 
-# -- _sequence_number: returns the acquisition sequence token (slot 2 of _FILENAME_TEMPLATE) from a micrograph filename, used to reorder destriped images before stacking
-def _sequence_number(filename: str) -> str:
-    token = Path(filename).stem.split('_')[2]
-    if not token.isdigit():
-        raise CryosaurError(f'Expected a numeric sequence token at position 2 of {filename!r}, got {token!r}')
-    return token
+# -- _tilt_angle: returns the tilt angle from a micrograph filename, used to order destriped images before stacking
+def _tilt_angle(filename: str) -> float:
+    token = Path(filename).stem.split('_')[3]
+    try:
+        return float(token)
+    except ValueError:
+        raise CryosaurError(f'Expected a numeric tilt angle at position 3 of {filename!r}, got {token!r}') from None
 
 # -- _tomogram_prefix_match: returns True if filename belongs to tomo_name
 def _tomogram_prefix_match(filename: str, tomo_name: str) -> bool:
@@ -60,7 +61,7 @@ def _write_newstack_file_of_inputs(list_path: Path, ordered_paths: list[Path]) -
         lines.append('0')
     list_path.write_text('\n'.join(lines) + '\n')
 
-# -- _stack_command: assembles one tomogram's destriped micrographs, in original tilt-acquisition order, into a single stack via newstack
+# -- _stack_command: assembles one tomogram's destriped micrographs, in tilt-angle order (lowest negative to highest positive), into a single stack via newstack
 def _stack_command(tomo_name: str, ordered_destriped_paths: list[Path], stack_dir: Path) -> str:
     list_path = stack_dir / f'{tomo_name}_inputs.txt'
     _write_newstack_file_of_inputs(list_path, ordered_destriped_paths)
@@ -148,7 +149,7 @@ def build_plan(source_project: Path, fork_dir: Path, *, reuse_alignment: bool = 
     denoise_dir = fork_dir / 'Denoise' / 'job004'
     segment_dir = fork_dir / 'Segmentation' / 'job005'
 
-    # Group micrographs by tomogram, sorted into original acquisition order, for destripe's expected_outputs and stack's input lists
+    # Group micrographs by tomogram, sorted into tilt-angle order (lowest negative to highest positive), for destripe's expected_outputs and stack's input lists
     destripe_input_dir = source_project / exclude_tilts.name / 'tilts'
     micrographs_by_tomogram: dict[str, list[Path]] = {name: [] for name in tomogram_names}
     for micrograph in sorted(destripe_input_dir.glob('*.mrc')):
@@ -157,7 +158,7 @@ def build_plan(source_project: Path, fork_dir: Path, *, reuse_alignment: bool = 
                 micrographs_by_tomogram[name].append(micrograph)
                 break
     for name in tomogram_names:
-        micrographs_by_tomogram[name].sort(key=lambda p: _sequence_number(p.name))
+        micrographs_by_tomogram[name].sort(key=lambda p: _tilt_angle(p.name))
     log.progress(f'Mapped {sum(len(value) for value in micrographs_by_tomogram.values())} micrograph(s) to {len(micrographs_by_tomogram.keys())} tomogram(s)')
 
     def _destriped_path(micrograph: Path) -> Path:
