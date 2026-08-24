@@ -54,7 +54,10 @@ def _destripe_commands(input_dir: Path, output_dir: Path, *, workers: int) -> li
 # -- _write_newstack_file_of_inputs: writes an IMOD "file of inputs" list for newstack -fileinlist
 def _write_newstack_file_of_inputs(list_path: Path, ordered_paths: list[Path]) -> None:
     list_path.parent.mkdir(parents=True, exist_ok=True)
-    lines = [str(len(ordered_paths))] + [str(p) for p in ordered_paths]
+    lines = [str(len(ordered_paths))]
+    for path in ordered_paths:
+        lines.append(str(path))
+        lines.append('0')
     list_path.write_text('\n'.join(lines) + '\n')
 
 # -- _stack_command: assembles one tomogram's destriped micrographs, in original tilt-acquisition order, into a single stack via newstack
