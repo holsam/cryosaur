@@ -19,6 +19,9 @@ CONFIG_DIR = Path(typer.get_app_dir('cryosaur'))
 CONFIG_PATH = CONFIG_DIR / 'config.toml'
 # -- DEFAULT_DB_PATH: annotation store location used when [project] db_path isn't set
 DEFAULT_DB_PATH = CONFIG_DIR / 'cryosaur.db'
+# -- DEFAULT_SCREENSHOTS_BASE_DIR: base directory for auto-captured screenshots when [project] screenshots_dir isn't set
+DEFAULT_SCREENSHOTS_BASE_DIR = CONFIG_DIR / 'projects'
+
 
 # -- ClusterSection: config.toml's [cluster] section
 class ClusterSection(BaseModel):
@@ -30,6 +33,7 @@ class ClusterSection(BaseModel):
 # -- ProjectSection: config.toml's [project] section
 class ProjectSection(BaseModel):
     db_path: str | None = None
+    screenshots_dir: str | None = None
 
 # -- CryosaurConfig: parsed config.toml
 class CryosaurConfig(BaseModel):
@@ -106,3 +110,17 @@ def resolve_db_path(config: CryosaurConfig | None, override: Path | None) -> Pat
     if config is not None and config.project.db_path:
         return Path(config.project.db_path).expanduser()
     return DEFAULT_DB_PATH
+
+# -- resolve_session_screenshots_root: returns <base>/<session_name>, accepting explicit override over config's [project] screenshots_dir, falling back to DEFAULT_SCREENSHOTS_BASE_DIR
+def resolve_session_screenshots_root(config: CryosaurConfig | None, override: Path | None, session_name: str) -> Path:
+    if override is not None:
+        base = override
+    elif config is not None and config.project.screenshots_dir:
+        base = Path(config.project.screenshots_dir).expanduser()
+    else:
+        base = DEFAULT_SCREENSHOTS_BASE_DIR
+    return base / session_name
+
+# -- resolve_screenshots_dir: returns <session_root>/annotations/<lamella_name>
+def resolve_screenshots_dir(config: CryosaurConfig | None, override: Path | None, session_name: str, lamella_name: str) -> Path:
+    return resolve_session_screenshots_root(config, override, session_name) / 'annotations' / lamella_name
