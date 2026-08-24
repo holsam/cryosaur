@@ -22,23 +22,12 @@ from cryosaur.utils.relion_adapter.note_log import (
 )
 from cryosaur.utils.relion_adapter.pipeline_graph import PipelineGraph
 from cryosaur.utils.relion_adapter.plan import PlannedStep, RunPlan
+from cryosaur.utils.relion_adapter.tilt_series import read_tomogram_micrographs
 
 # -- Define constants for PyLisC
 _FILENAME_TEMPLATE = '{}_{position}_{}_{tilt}_{}_{}_{}_{}_{}.mrc'
 _PYLISC_SUFFIX = '_PyLisC_angular'  # hardcoded by pylisc
 _DESTRIPE_SUFFIX = '_destriped'      # cryosaur's own preferred naming, applied by a rename step below
-
-# -- _tilt_angle: returns the tilt angle from a micrograph filename, used to order destriped images before stacking
-def _tilt_angle(filename: str) -> float:
-    token = Path(filename).stem.split('_')[3]
-    try:
-        return float(token)
-    except ValueError:
-        raise CryosaurError(f'Expected a numeric tilt angle at position 3 of {filename!r}, got {token!r}') from None
-
-# -- _tomogram_prefix_match: returns True if filename belongs to tomo_name
-def _tomogram_prefix_match(filename: str, tomo_name: str) -> bool:
-    return filename.startswith(f'{tomo_name}_')
 
 # -- _destripe_commands: runs pylisc over the whole input directory in one call, then renames every output file (.mrc and any accompanying files, e.g. .log) from pylisc's hardcoded _PyLisC_angular suffix to cryosaur's own _destriped
 def _destripe_commands(input_dir: Path, output_dir: Path, *, workers: int) -> list[str]:
@@ -61,7 +50,7 @@ def _write_newstack_file_of_inputs(list_path: Path, ordered_paths: list[Path]) -
         lines.append('0')
     list_path.write_text('\n'.join(lines) + '\n')
 
-# -- _stack_command: assembles one tomogram's destriped micrographs, in tilt-angle order (lowest negative to highest positive), into a single stack via newstack
+# -- _stack_command: assembles one tomogram's destriped micrographs, in the tilt order RELION's own tilt series STAR file records, into a single stack via newstack
 def _stack_command(tomo_name: str, ordered_destriped_paths: list[Path], stack_dir: Path) -> str:
     list_path = stack_dir / f'{tomo_name}_inputs.txt'
     _write_newstack_file_of_inputs(list_path, ordered_destriped_paths)
@@ -124,6 +113,7 @@ def build_plan(source_project: Path, fork_dir: Path, *, reuse_alignment: bool = 
         return jobs[-1]
 
     exclude_tilts = _last_job(graph, 'relion.excludetilts', source_project)
+    align_job = _last_job(graph, 'relion.aligntiltseries.aretomo', source_project)
     source_reconstruct = _last_job(graph, 'relion.reconstructtomograms', source_project)
     source_denoise = _last_job(graph, 'relion.denoisetomo', source_project)
     source_segment = _last_job(graph, 'membrain.segment', source_project)
@@ -149,16 +139,12 @@ def build_plan(source_project: Path, fork_dir: Path, *, reuse_alignment: bool = 
     denoise_dir = fork_dir / 'Denoise' / 'job004'
     segment_dir = fork_dir / 'Segmentation' / 'job005'
 
-    # Group micrographs by tomogram, sorted into tilt-angle order (lowest negative to highest positive), for destripe's expected_outputs and stack's input lists
+    # Group micrographs by tomogram, in RELION's own deduplicated tilt order
     destripe_input_dir = source_project / exclude_tilts.name / 'tilts'
-    micrographs_by_tomogram: dict[str, list[Path]] = {name: [] for name in tomogram_names}
-    for micrograph in sorted(destripe_input_dir.glob('*.mrc')):
-        for name in tomogram_names:
-            if _tomogram_prefix_match(micrograph.name, name):
-                micrographs_by_tomogram[name].append(micrograph)
-                break
+    micrographs_by_tomogram: dict[str, list[Path]] = {}
     for name in tomogram_names:
-        micrographs_by_tomogram[name].sort(key=lambda p: _tilt_angle(p.name))
+        tilt_series_star = source_project / align_job.name / 'tilt_series' / f'{name}.star'
+        micrographs_by_tomogram[name] = [source_project / m for m in read_tomogram_micrographs(tilt_series_star)]
     log.progress(f'Mapped {sum(len(value) for value in micrographs_by_tomogram.values())} micrograph(s) to {len(micrographs_by_tomogram.keys())} tomogram(s)')
 
     def _destriped_path(micrograph: Path) -> Path:
