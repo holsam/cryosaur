@@ -87,8 +87,8 @@ def _reconstruct_commands(
     # -Cmd 2 needs the source project's .aln and _TLT.txt copied alongside the new destriped stack, matched by filename stem
     stem = f'{tomo_name}_stack'
     copy_commands = [
-        f'cp {source_stack_dir / f"{stem}.aln"} {new_outdir / f"{stem}.aln"}',
-        f'cp {source_stack_dir / f"{stem}_TLT.txt"} {new_outdir / f"{stem}_TLT.txt"}',
+        f'cp {source_stack_dir / f"{stem}.aln"} {new_stack_path.parent / f"{stem}.aln"}',
+        f'cp {source_stack_dir / f"{stem}_TLT.txt"} {new_stack_path.parent / f"{stem}_TLT.txt"}',
     ]
     reconstruct_command = command.replace('-Cmd 1', '-Cmd 2')
     return copy_commands + [reconstruct_command]
