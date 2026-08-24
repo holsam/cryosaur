@@ -245,11 +245,17 @@ def main() -> None:
         })
     st.dataframe(rows, use_container_width=True)
 
-    with st.expanded(f'Overlay thumbnails ({len(filtered_lamellae)}) lamella(e) showsn', expanded=False):
+    with st.expander(f'Overlay thumbnails ({len(filtered_lamellae)}) lamella(e) shown', expanded=False):
         for lamella in filtered_lamellae:
             annotations = store.get_annotations_for_lamella(db_path, lamella.id)
             for overlay in annotations['overlays']:
                 st.image(overlay.thumbnail_path, caption=f'{lamella.lamella_name} ({overlay.seg_type})')
+
+    with st.expander(f'Screenshots ({len(filtered_lamellae)} lamella(e) shown)', expanded=False):
+        for lamella in filtered_lamellae:
+            annotations = store.get_annotations_for_lamella(db_path, lamella.id)
+            for screenshot in annotations['screenshots']:
+                st.image(screenshot.path, caption=f'{lamella.lamella_name} (captured {screenshot.created_at})')
 
 if __name__ == '__main__':
     main()
