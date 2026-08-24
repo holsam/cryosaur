@@ -13,6 +13,7 @@ from cryosaur.utils.project.schema import (
     NoteAnnotation,
     OverlayRecord,
     PointAnnotation,
+    ScreenshotRecord,
     SessionRecord,
 )
 from cryosaur.utils.errors import CryosaurError
@@ -65,10 +66,18 @@ CREATE TABLE IF NOT EXISTS overlays (
     mesh_cache_path TEXT,
     created_at      TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS screenshots (
+    id           INTEGER PRIMARY KEY,
+    lamella_id   INTEGER NOT NULL UNIQUE REFERENCES lamellae(id) ON DELETE CASCADE,
+    path         TEXT NOT NULL,
+    sidecar_path TEXT NOT NULL,
+    created_at   TEXT NOT NULL
+);
 CREATE INDEX IF NOT EXISTS idx_lamellae_session_id ON lamellae(session_id);
 CREATE INDEX IF NOT EXISTS idx_notes_lamella_id ON notes(lamella_id);
 CREATE INDEX IF NOT EXISTS idx_points_lamella_id ON point_annotations(lamella_id);
 CREATE INDEX IF NOT EXISTS idx_overlays_lamella_id ON overlays(lamella_id);
+CREATE INDEX IF NOT EXISTS idx_screenshots_lamella_id ON screenshots(lamella_id);
  '''
 
 # -- init_db: returns None, but creates every table in db_path if not already present
@@ -237,16 +246,30 @@ def add_overlay(
         record.id = cursor.lastrowid
     return record
 
-# -- get_annotations_for_lamella: returns a dict of every note, point and overlay recorded against lamella_id
+# -- add_screenshot: returns the created/updated ScreenshotRecord (one row per lamella; re-adding replaces the existing row via the UNIQUE(lamella_id) upsert)
+def add_screenshot(db_path: Path, lamella_id: int, path: str, sidecar_path: str) -> ScreenshotRecord:
+    record = ScreenshotRecord(lamella_id=lamella_id, path=path, sidecar_path=sidecar_path)
+    with _connect(db_path) as conn:
+        row = conn.execute(
+            '''INSERT INTO screenshots (lamella_id, path, sidecar_path, created_at) VALUES (?, ?, ?, ?)
+               ON CONFLICT(lamella_id) DO UPDATE SET path = excluded.path, sidecar_path = excluded.sidecar_path, created_at = excluded.created_at
+               RETURNING *''',
+            (record.lamella_id, record.path, record.sidecar_path, record.created_at),
+        ).fetchone()
+    return ScreenshotRecord(**dict(row))
+
+# -- get_annotations_for_lamella: returns a dict of every note, point, overlay and screenshot recorded against lamella_id
 def get_annotations_for_lamella(db_path: Path, lamella_id: int) -> dict[str, list]:
     with _connect(db_path) as conn:
         notes = conn.execute('SELECT * FROM notes WHERE lamella_id = ? ORDER BY created_at ASC', (lamella_id,)).fetchall()
         points = conn.execute('SELECT * FROM point_annotations WHERE lamella_id = ? ORDER BY created_at ASC', (lamella_id,)).fetchall()
         overlays = conn.execute('SELECT * FROM overlays WHERE lamella_id = ? ORDER BY created_at ASC', (lamella_id,)).fetchall()
+        screenshots = conn.execute('SELECT * FROM screenshots WHERE lamella_id = ? ORDER BY created_at ASC', (lamella_id,)).fetchall()
     return {
         'notes': [NoteAnnotation(**dict(row)) for row in notes],
         'points': [PointAnnotation(**dict(row)) for row in points],
         'overlays': [OverlayRecord(**dict(row)) for row in overlays],
+        'screenshots': [ScreenshotRecord(**dict(row)) for row in screenshots],
     }
 
 # -- get_lamella: returns the LamellaRecord for lamella_id, or None if it doesn't exist
