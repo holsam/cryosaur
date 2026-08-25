@@ -19,7 +19,7 @@ from cryosaur.utils.project import store
 _IMAGE_EXTS = ('.png', '.jpg', '.jpeg')
 
 # -- ingest_screenshots: registers every screenshot+TOML-sidecar pair (matched by filename stem) in directory as a ScreenshotRecord, matching lamellae by name within session_id
-@register('ingest-screenshots', group='project', rich_help_panel='Data Import/Export')
+@register('ingest-screenshots', group='project', panel='Data Import/Export')
 def ingest_screenshots(
     directory: Annotated[Path, typer.Argument(help='Directory containing screenshot + TOML sidecar pairs.', exists=True, file_okay=False)],
     session_id: Annotated[str, typer.Option('--session-id', help='Session the screenshots belong to.')],

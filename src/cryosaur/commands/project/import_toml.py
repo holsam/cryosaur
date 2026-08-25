@@ -36,7 +36,7 @@ def _print_plan(plan: toml_io.ImportPlan) -> None:
     console.print(f'{len(plan.new_sessions)} new session(s), {len(plan.new_lamellae)} new lamella/lamellae (no conflict)')
 
 # -- import_toml_command: plans a TOML import, shows conflicts, confirms skip/replace, then applies
-@register('import-toml', group='project', rich_help_panel='Data Import/Export')
+@register('import-toml', group='project', panel='Data Import/Export')
 def import_toml_command(
     path: Annotated[Path, typer.Argument(help='TOML file to import.', exists=True)],
     on_conflict: Annotated[

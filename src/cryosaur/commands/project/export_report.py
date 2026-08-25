@@ -17,7 +17,7 @@ from cryosaur.utils.project import store
 from cryosaur.utils.project.report import render_report_markdown
 
 # -- export_report: writes <output_dir>/report.md summarising every lamella's status/notes/points/screenshot for session_id
-@register('export-report', group='project', rich_help_panel='Data Import/Export')
+@register('export-report', group='project', panel='Data Import/Export')
 def export_report(
     session_id: Annotated[str, typer.Option('--session-id', help='Session to export a report for.')],
     output_dir: Annotated[Path | None, typer.Option('--output-dir', help='Directory to write report.md into (defaults to the screenshots root for this session).', show_default=False)] = None,
