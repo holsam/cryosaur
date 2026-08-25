@@ -9,7 +9,7 @@ from typing import Annotated
 
 # -- Import cryosaur utilities
 from cryosaur.utils.project import store
-from cryosaur.utils.cli.options import DbPathOption
+from cryosaur.utils.cli.options import DbPathOption, ScreenshotsDirOption
 from cryosaur.utils.cli.registry import register
 from cryosaur.utils.config import load_config, resolve_db_path
 from cryosaur.utils.errors import CryosaurError
@@ -23,6 +23,7 @@ def annotate(
         typer.Option('--session-id', help='Session to annotate.'),
     ],
     db_path: DbPathOption = None,
+    screenshots_dir: ScreenshotsDirOption = None
 ):
     '''
     Launch the lamella annotation GUI for a session.
@@ -41,7 +42,7 @@ def annotate(
     from cryosaur.utils.project.gui.annotate_window import AnnotateWindow
 
     app = QApplication(sys.argv)
-    window = AnnotateWindow(resolved_db_path, session)
+    window = AnnotateWindow(resolved_db_path, session, screenshots_dir)
     window.show()
     log.info(f'Launched annotate for session <cyan>{session_id}</cyan>')
     app.exec()

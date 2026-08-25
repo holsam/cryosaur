@@ -55,3 +55,11 @@ class OverlayRecord(BaseModel):
     thumbnail_path: str
     mesh_cache_path: str | None = None
     created_at: str = Field(default_factory=_now)
+
+# -- ScreenshotRecord: the latest auto-captured screenshot + annotation-state sidecar for a lamella (one per lamella, overwritten in place)
+class ScreenshotRecord(BaseModel):
+    id: int | None = None
+    lamella_id: int
+    path: str
+    sidecar_path: str
+    created_at: str = Field(default_factory=_now)
