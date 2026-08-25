@@ -4,7 +4,9 @@ CRYOSAUR: commands module
 
 # -- Import cryosaur commands: projects
 from cryosaur.commands.project import annotate as _project_annotate_cli
+from cryosaur.commands.project import export_report as _project_export_report
 from cryosaur.commands.project import import_toml as _project_import_toml_cli
+from cryosaur.commands.project import ingest as _project_ingest_screenshots_cli
 from cryosaur.commands.project import render as _project_render_cli
 from cryosaur.commands.project import session as _project_session_cli
 from cryosaur.commands.project import view as _project_view_cli
