@@ -2,28 +2,33 @@
 CRYOSAUR: commands module
 '''
 
-# -- Wrap all import in a try...except block so failed imports don't prevent cryosaur from running
-try:
-    # -- Import cryosaur commands: projects (if dependencies available)
-    from cryosaur.commands.project import annotate as _project_annotate_cli
-    from cryosaur.commands.project import export_report as _project_export_report
-    from cryosaur.commands.project import import_toml as _project_import_toml_cli
-    from cryosaur.commands.project import ingest as _project_ingest_screenshots_cli
-    from cryosaur.commands.project import render as _project_render_cli
-    from cryosaur.commands.project import session as _project_session_cli
-    from cryosaur.commands.project import view as _project_view_cli
+# -- Import cryosaur utilities
+from cryosaur.utils.log import log
 
-    # -- Import cryosaur commands: pipelines
-    from cryosaur.commands.destripe_lamella import cli as _destripe_lamella_cli
-    from cryosaur.commands.morph_analysis import cli as _morpho_analysis_cli
+# -- Define all commands to import
+cryosaur_commands = [
+    # project subcommands
+    'cryosaur.commands.project.annotate',
+    'cryosaur.commands.project.export_report',
+    'cryosaur.commands.project.import_toml',
+    'cryosaur.commands.project.ingest',
+    'cryosaur.commands.project.render',
+    'cryosaur.commands.project.session',
+    'cryosaur.commands.project.view',
+    # pipelines
+    'cryosaur.commands.destripe_lamella.cli',
+    'cryosaur.commands.morpho_analysis.cli',
+    # tools
+    'cryosaur.commands.trim_vol.cli',
+    # utilities
+    'cryosaur.commands.config.config',
+    'cryosaur.commands.utils.check_external_tools',
+    'cryosaur.commands.utils.flatten',
+]
 
-    # -- Import cryosaur commands: tools
-    from cryosaur.commands.trim_vol import cli as _trim_volume_cli
-
-    # -- Import cryosaur commands: utilities
-    from cryosaur.commands.config import config as _config_cli
-    from cryosaur.commands.utils import check_external_tools as _check_tools_cli
-    from cryosaur.commands.utils import flatten as _flatten_cli
-
-except ModuleNotFoundError:
-    pass
+# -- Loop over all commands and try to import, logging warning if exception raised
+for command in cryosaur_commands:
+    try:
+        __import__(command)
+    except (ModuleNotFoundError, ImportError):
+        continue
