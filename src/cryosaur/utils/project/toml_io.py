@@ -75,6 +75,7 @@ def export_session_to_toml_bytes(db_path: Path, session_id: str | None = None) -
             lamella_entry['notes'] = [n.model_dump() for n in annotations['notes']]
             lamella_entry['points'] = [p.model_dump() for p in annotations['points']]
             lamella_entry['overlays'] = [o.model_dump() for o in annotations['overlays']]
+            lamella_entry['screenshots'] = [s.model_dump() for s in annotations['screenshots']]
             session_entry['lamellae'].append(lamella_entry)
         data['sessions'].append(session_entry)
 
@@ -152,6 +153,8 @@ def _apply_lamella_entry(db_path: Path, session_id: str, lamella_entry: dict) ->
             db_path, lamella.id, overlay_entry['seg_type'], overlay_entry['thumbnail_path'],
             mesh_cache_path=overlay_entry.get('mesh_cache_path'),
         )
+    for screenshot_entry in lamella_entry.get('screenshots', []):
+        store.add_screenshot(db_path, lamella.id, screenshot_entry['path'], screenshot_entry['sidecar_path'])
 
 # -- apply_import: returns an ImportSummary after committing plan against db_path, applying on_conflict to every conflicting session/lamella
 def apply_import(db_path: Path, plan: ImportPlan, on_conflict: Literal['skip', 'replace'] = 'skip') -> ImportSummary:

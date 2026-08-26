@@ -54,3 +54,9 @@ DbPathOption = Annotated[
     Path | None,
     typer.Option('--db-path', help="Path to the annotation SQLite database (defaults to the config's [project] db_path, or project.db next to config.toml).", show_default=False, rich_help_panel='Project Options'),
 ]
+
+# -- ScreenshotsDirOption: option expecting Path or None
+ScreenshotsDirOption = Annotated[
+    Path | None,
+    typer.Option('--screenshots-dir', help="Base directory for auto-captured screenshots (defaults to the config's [project] screenshots_dir).", show_default=False, rich_help_panel='Project Options'),
+]

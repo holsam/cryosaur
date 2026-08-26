@@ -53,6 +53,11 @@ def logging_callback(
     log_path = configure_logging(directory=log_dir, mode=log_mode, quiet=quiet, verbosity=verbosity)
     # Output confirmation message that logging has been set up
     log.info(f'Log messages will be {"appended" if log_mode == 'append' else "written"} to <cyan>{log_path}</cyan>')
+    # Import any unavailable commands and log warning
+    from cryosaur.utils.cli.__init__ import UNAVAILABLE_COMMANDS
+    total_unavailable = len(UNAVAILABLE_COMMANDS)
+    if total_unavailable > 0:
+        log.warning(f'{total_unavailable} command{"s" if total_unavailable>1 else ""} unavailable due to missing imports: <cyan>{"</cyan>, <cyan>".join(UNAVAILABLE_COMMANDS)}</cyan>')    
 
 # -- _GROUP_HELP: dictionary containing help text for any sub-Typers 
 _GROUP_HELP = {

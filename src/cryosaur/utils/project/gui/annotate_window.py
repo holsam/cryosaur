@@ -36,11 +36,15 @@ class AnnotateWindow(QMainWindow):
     # geometry_ready: emitted on the worker thread pool once a lamella's mesh has been loaded/cached, so the UI can pick it up on the main thread
     geometry_ready = Signal(object)
 
-    def __init__(self, db_path: Path, session: SessionRecord):
+    def __init__(self, db_path: Path, session: SessionRecord, screenshots_dir_override: Path | None = None):
         super().__init__()
         self.db_path = db_path
         self.session = session
         self.setWindowTitle(f'cryosaur -- annotate: {session.session_name}')
+
+        from cryosaur.utils.config import load_config
+        self._config = load_config()
+        self._screenshots_dir_override = screenshots_dir_override
 
         self._pool = QThreadPool.globalInstance()
         self._current_lamella: LamellaRecord | None = None
@@ -145,6 +149,23 @@ class AnnotateWindow(QMainWindow):
         if self._current_lamella is None:
             return
         store.update_lamella(self.db_path, self._current_lamella.id, status=text or None)
+        self._capture_screenshot()
+
+    # -- _capture_screenshot: returns None, but overwrites the current lamella's latest screenshot+sidecar and upserts its ScreenshotRecord
+    def _capture_screenshot(self) -> None:
+        if self._current_lamella is None:
+            return
+        from cryosaur.utils.config import resolve_screenshots_dir
+        from cryosaur.utils.project.screenshot import capture_screenshot
+
+        out_dir = resolve_screenshots_dir(self._config, self._screenshots_dir_override, self.session.session_name, self._current_lamella.lamella_name)
+        annotations = store.get_annotations_for_lamella(self.db_path, self._current_lamella.id)
+        try:
+            screenshot_path, sidecar_path = capture_screenshot(self._plotter, out_dir, self._current_lamella, annotations['notes'], annotations['points'])
+        except OSError as exc:
+            log.warning(f'Could not write screenshot for <cyan>{self._current_lamella.lamella_name}</cyan>: {exc}')
+            return
+        store.add_screenshot(self.db_path, self._current_lamella.id, str(screenshot_path), str(sidecar_path))
 
     # -- _on_delete_lamella: returns None, but deletes the current lamella (cascading to its notes/points/overlays) after confirmation
     def _on_delete_lamella(self) -> None:
@@ -179,6 +200,7 @@ class AnnotateWindow(QMainWindow):
         store.add_note(self.db_path, self._current_lamella.id, text)
         self._new_note_box.clear()
         self._reload_notes()
+        self._capture_screenshot()
 
     # -- _on_delete_note: returns None, but deletes the selected note
     def _on_delete_note(self) -> None:
@@ -187,6 +209,7 @@ class AnnotateWindow(QMainWindow):
             return
         store.delete_note(self.db_path, item.data(_Qt_UserRole))
         self._reload_notes()
+        self._capture_screenshot()
 
     # -- _reload_points: returns None, but refreshes the points list and redraws every point as a glyph (plan.md §4: glyphs reserved for the small number of interactively placed points)
     def _reload_points(self) -> None:
@@ -226,6 +249,7 @@ class AnnotateWindow(QMainWindow):
             QMessageBox.warning(self, 'Could not add point', str(exc))
             return
         self._reload_points()
+        self._capture_screenshot()
 
     # -- _on_delete_point: returns None, but deletes the selected point
     def _on_delete_point(self) -> None:
@@ -234,3 +258,4 @@ class AnnotateWindow(QMainWindow):
             return
         store.delete_point(self.db_path, item.data(_Qt_UserRole))
         self._reload_points()
+        self._capture_screenshot()
