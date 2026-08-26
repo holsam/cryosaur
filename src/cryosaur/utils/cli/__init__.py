@@ -15,6 +15,7 @@ try:
 
     # -- Import cryosaur commands: pipelines
     from cryosaur.commands.destripe_lamella import cli as _destripe_lamella_cli
+    from cryosaur.commands.morph_analysis import cli as _morpho_analysis_cli
 
     # -- Import cryosaur commands: tools
     from cryosaur.commands.trim_vol import cli as _trim_volume_cli
