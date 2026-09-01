@@ -7,7 +7,7 @@ import re
 from pathlib import Path
 
 # -- Define globs and prefix-segment patterns
-TOMOGRAM_GLOB = 'processed/raw*/relion_murfey/Tomograms/job*/tomograms/*.mrc'
+TOMOGRAM_GLOB = 'processed/raw*/relion_murfey/Tomograms/job*/tomograms/*_Vol.mrc'
 SEGMENTATION_GLOB = 'processed/raw*/relion_murfey/Segmentation/job*/tomograms/*.mrc'
 RAW_DIR_RE = re.compile(r'^raw\d*$')  # matches e.g. "raw", "raw2", "raw12"
 JOB_DIR_RE = re.compile(r'^job\d+$')
