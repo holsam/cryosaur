@@ -8,7 +8,8 @@ from pathlib import Path
 
 # -- Define globs and prefix-segment patterns
 TOMOGRAM_GLOB = 'processed/raw*/relion_murfey/Tomograms/job*/tomograms/*_Vol.mrc'
-SEGMENTATION_GLOB = 'processed/raw*/relion_murfey/Segmentation/job*/tomograms/*.mrc'
+# Segmentation dirs may hold several class maps (e.g. *_easymode_ribosome.mrc); only the merged *_denoised_segmented.mrc is wanted
+SEGMENTATION_GLOB = 'processed/raw*/relion_murfey/Segmentation/job*/tomograms/*denoised_segmented.mrc'
 RAW_DIR_RE = re.compile(r'^raw\d*$')  # matches e.g. "raw", "raw2", "raw12"
 JOB_DIR_RE = re.compile(r'^job\d+$')
 
@@ -63,7 +64,7 @@ def summarise_counts(roots: list[Path]) -> list[tuple[str, str, int, int]]:
 
 # -- strip_segmentation_suffix: removes the _denoised_segmented suffix (if present) for pairing comparison
 def strip_segmentation_suffix(stem: str) -> str:
-    return re.sub(r'_denoised_segmented$', '', stem)
+    return re.sub(r'[._]denoised_segmented$', '', stem)
 
 # -- pair_files: matches each tomogram to its segmentation by original stem, returning their (prefixed) symlink stems
 def pair_files(tomograms: list[tuple[Path, str]], segmentations: list[tuple[Path, str]]) -> list[tuple[str, str]]:

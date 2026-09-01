@@ -73,7 +73,7 @@ def morpho_analysis_command(
     output_dir: Annotated[
         Path,
         typer.Option('--output-dir', '-o', help='Directory to symlink tomograms/segmentations into and run the evaluator label/model/analyse chain under.'),
-    ] = Path('morph_analysis'),
+    ] = Path('morpho_analysis'),
     cluster: Annotated[
         str | None,
         typer.Option('--cluster', help='Submit via the named scheduler backend (e.g. slurm) instead of running locally.'),
@@ -88,6 +88,10 @@ def morpho_analysis_command(
         roots = _prompt_roots()
     if not roots:
         raise CryosaurError('No root directories specified.')
+
+    # Resolve everything to absolute so symlink targets and evaluator -o paths are stable regardless of cwd (e.g. under slurm)
+    roots = [r.expanduser().resolve() for r in roots]
+    output_dir = output_dir.expanduser().resolve()
 
     rows = _print_summary(roots)
     if not rows:
