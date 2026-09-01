@@ -20,12 +20,12 @@
 {% endif -%}
 #SBATCH --output={{ log_path }}.out
 #SBATCH --error={{ log_path }}.err
- 
+
+set -euo pipefail
+
 {% for module in resources.modules -%}
 module load {{ module }}
 {% endfor %}
-{{ command }}
-
 {% for command in commands %}
 {{ command }}
 {% endfor %}

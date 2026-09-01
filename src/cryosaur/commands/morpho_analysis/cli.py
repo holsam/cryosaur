@@ -11,15 +11,14 @@ from typing import Annotated
 
 # -- Import cryosaur utilities
 from cryosaur.commands.morpho_analysis.collect import collect, make_symlinks, pair_files, summarise_counts
-from cryosaur.commands.morpho_analysis.plan import build_steps
+from cryosaur.commands.morpho_analysis.plan import build_commands
 from cryosaur.utils.cli.options import ClusterResourcesOption
 from cryosaur.utils.cli.registry import register
-from cryosaur.utils.cluster.cluster import confirm_local_run
+from cryosaur.utils.cluster.cluster import confirm_local_run, get_backend
 from cryosaur.utils.config import load_config, resolve_resources
 from cryosaur.utils.errors import CryosaurError, handle_errors
 from cryosaur.utils.external.evaluator import run_evaluator_step
 from cryosaur.utils.log import log
-from cryosaur.utils.relion_adapter.submit import submit_single_job
 
 # -- JobsOption: number of workers passed as evaluator's -j (defaults to the resolved resources' cpus_per_task for --cluster, or os.cpu_count() locally)
 JobsOption = Annotated[
@@ -107,11 +106,18 @@ def morpho_analysis_command(
     log.info(f'morpho-analysis: {len(pair_files(tomograms, segmentations))} matched tomogram/segmentation pair(s) collected')
 
     if cluster is not None:
+        backend = get_backend(cluster.lower())
+        if backend is None:
+            raise CryosaurError(f'No {cluster!r} scheduler backend registered')
         resources = resolve_resources(load_config(), cluster_resources)
-        steps = build_steps(segmentation_dir, output_dir, jobs or resources.cpus_per_task, resources)
-        job_ids = submit_single_job(steps, output_dir)
-        for name, job_id in job_ids.items():
-            log.info(f'  <cyan>{name}</cyan> -> SLURM job <cyan>{job_id}</cyan>')
+        n_jobs = jobs or resources.cpus_per_task
+        resources = resources.model_copy(update={'name': 'cryosaur-morpho-analysis', 'cpus_per_task': n_jobs})
+        commands = build_commands(segmentation_dir, output_dir, n_jobs)
+        script_path = output_dir / 'morpho_analysis.sbatch'
+        log_path = output_dir / 'morpho_analysis.log'
+        backend.write_script(resources, commands, script_path, log_path)
+        job_id = backend.submit(script_path)
+        log.info(f'  <cyan>morpho-analysis</cyan> -> {cluster} job <cyan>{job_id}</cyan>')
         return
 
     confirm_local_run('morpho-analysis')
