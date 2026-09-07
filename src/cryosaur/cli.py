@@ -64,7 +64,8 @@ _GROUP_HELP = {
     'utils': 'Misc cryosaur utilities.',
     'config': 'Manage the cryosaur configuration file.',
     'project': 'Manage a cryosaur project.',
-    'session': 'Manage a cryosaur project session.'
+    'session': 'Manage a cryosaur project session.',
+    'match-template': 'Locate regions matching a template volume across tomograms.',
 }
 
 # -- _GROUP_HELP_PANELS: dictionary containing Rich help panels for any sub-Typers 
@@ -72,7 +73,8 @@ _GROUP_HELP_PANELS = {
     'utils': 'Utilities',
     'config': 'Utilities',
     'project': 'Project Management',
-    'session': 'Project Management'
+    'session': 'Project Management',
+    'match-template': 'Pipelines',
 }
 
 # -- Attach every registered command onto the main Typer app, grouping any with a `group` set under their own nested Typer app

@@ -50,6 +50,7 @@ cryosaur_commands = {
     'cryosaur.commands.project.view': ('project view', 'project'),
     # pipelines
     'cryosaur.commands.destripe_lamella.cli': ('destripe-lamella', None),
+    'cryosaur.commands.match_template.cli': (['match-template extract', 'match-template template', 'match-template match'], None),
     'cryosaur.commands.morpho_analysis.cli': ('morpho-analysis', None),
     # tools
     'cryosaur.commands.trim_vol.cli': ('trim-vol', None),
