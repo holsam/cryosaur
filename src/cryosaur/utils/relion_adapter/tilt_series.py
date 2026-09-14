@@ -40,3 +40,12 @@ def read_tomogram_micrographs(tilt_series_star_path: Path) -> list[str]:
         raise CryosaurError(f'{tilt_series_star_path}: no rlnMicrographName column found')
     micrograph_column = columns.index('rlnMicrographName')
     return [row[micrograph_column] for row in rows]
+
+# -- read_tomogram_tilt_angles: returns {rlnMicrographName: rlnTomoNominalStageTiltAngle} for tilt_series_star_path
+def read_tomogram_tilt_angles(tilt_series_star_path: Path) -> dict[str, str]:
+    columns, rows = parse_star_loop(tilt_series_star_path)
+    if 'rlnMicrographName' not in columns or 'rlnTomoNominalStageTiltAngle' not in columns:
+        raise CryosaurError(f'{tilt_series_star_path}: rlnMicrographName/rlnTomoNominalStageTiltAngle column not found')
+    micrograph_column = columns.index('rlnMicrographName')
+    angle_column = columns.index('rlnTomoNominalStageTiltAngle')
+    return {row[micrograph_column]: row[angle_column] for row in rows}

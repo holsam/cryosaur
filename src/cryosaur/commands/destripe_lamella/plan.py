@@ -22,7 +22,7 @@ from cryosaur.utils.relion_adapter.note_log import (
 )
 from cryosaur.utils.relion_adapter.pipeline_graph import PipelineGraph
 from cryosaur.utils.relion_adapter.plan import PlannedStep, RunPlan
-from cryosaur.utils.relion_adapter.tilt_series import read_tomogram_micrographs
+from cryosaur.utils.relion_adapter.tilt_series import read_tomogram_micrographs, read_tomogram_tilt_angles
 
 # -- Define constants for PyLisC
 _FILENAME_TEMPLATE = '{}_{position}_{}_{tilt}_{}_{}_{}_{}_{}.mrc'
@@ -98,6 +98,24 @@ def _segment_commands(note_line: str, new_input: Path, new_outdir: Path) -> list
     command = substitute_paths(note_line, [(old_input, str(new_input)), (old_outdir, str(new_outdir))])
     return [command]
 
+# -- _dedupe_retakes: drops frames sharing a tilt angle in the same tomogram, keeping whichever retake excludetilts_kept_names already resolved to keep (falls back to the last retake if excludetilts kept none or more than one of the duplicates)
+def _dedupe_retakes(micrographs: list[str], angles: dict[str, str], excludetilts_kept_names: set[str]) -> list[str]:
+    by_angle: dict[str, list[str]] = {}
+    for micrograph in micrographs:
+        by_angle.setdefault(angles[micrograph], []).append(micrograph)
+
+    deduped: list[str] = []
+    for micrograph in micrographs:
+        group = by_angle[angles[micrograph]]
+        if len(group) == 1:
+            deduped.append(micrograph)
+            continue
+        kept_in_group = [g for g in group if g in excludetilts_kept_names]
+        chosen = kept_in_group[0] if len(kept_in_group) == 1 else group[-1]
+        if micrograph == chosen:
+            deduped.append(micrograph)
+    return deduped
+
 # -- build_plan: reads source_project, plans a destripe-lamella branch into fork_dir, and returns the RunPlan
 def build_plan(source_project: Path, fork_dir: Path, *, reuse_alignment: bool = True, exclude_tilts: bool = False, cluster_resources: str | None = None) -> RunPlan:
     log.info(f'Building plan from source project <cyan>{source_project}</cyan>')
@@ -154,7 +172,13 @@ def build_plan(source_project: Path, fork_dir: Path, *, reuse_alignment: bool = 
     micrographs_by_tomogram: dict[str, list[Path]] = {}
     for name in tomogram_names:
         tilt_series_star = source_project / tilt_series_job.name / 'tilt_series' / f'{name}.star'
-        micrographs_by_tomogram[name] = [source_project / m for m in read_tomogram_micrographs(tilt_series_star)]
+        micrographs = read_tomogram_micrographs(tilt_series_star)
+        if not exclude_tilts:
+            angles = read_tomogram_tilt_angles(tilt_series_star)
+            excludetilts_star = source_project / exclude_tilts_job.name / 'tilt_series' / f'{name}.star'
+            excludetilts_kept_names = set(read_tomogram_micrographs(excludetilts_star))
+            micrographs = _dedupe_retakes(micrographs, angles, excludetilts_kept_names)
+        micrographs_by_tomogram[name] = [source_project / m for m in micrographs]
     log.progress(f'Mapped {sum(len(value) for value in micrographs_by_tomogram.values())} micrograph(s) to {len(micrographs_by_tomogram.keys())} tomogram(s)')
 
     def _destriped_path(micrograph: Path) -> Path:
