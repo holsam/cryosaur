@@ -11,6 +11,7 @@ from typing import Annotated, Literal
 from cryosaur.utils.errors import handle_errors
 from cryosaur.utils.log import configure_logging, log
 from cryosaur.utils.cli.registry import registered_commands
+from cryosaur.utils.version import resolve_version
 
 # -- Import cryosaur commands
 import cryosaur.commands
@@ -53,6 +54,8 @@ def logging_callback(
     log_path = configure_logging(directory=log_dir, mode=log_mode, quiet=quiet, verbosity=verbosity)
     # Output confirmation message that logging has been set up
     log.info(f'Log messages will be {"appended" if log_mode == 'append' else "written"} to <cyan>{log_path}</cyan>')
+    # Output cryosaur version number
+    log.info(f'Cryosaur version: v{resolve_version()}')
     # Import any unavailable commands and log warning
     from cryosaur.utils.cli.__init__ import UNAVAILABLE_COMMANDS
     total_unavailable = len(UNAVAILABLE_COMMANDS)
