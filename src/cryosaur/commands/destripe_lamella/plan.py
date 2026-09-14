@@ -99,7 +99,7 @@ def _segment_commands(note_line: str, new_input: Path, new_outdir: Path) -> list
     return [command]
 
 # -- build_plan: reads source_project, plans a destripe-lamella branch into fork_dir, and returns the RunPlan
-def build_plan(source_project: Path, fork_dir: Path, *, reuse_alignment: bool = True, cluster_resources: str | None = None) -> RunPlan:
+def build_plan(source_project: Path, fork_dir: Path, *, reuse_alignment: bool = True, exclude_tilts: bool = False, cluster_resources: str | None = None) -> RunPlan:
     log.info(f'Building plan from source project <cyan>{source_project}</cyan>')
     baseline_resources = resolve_resources(load_config(), cluster_resources)
     graph = PipelineGraph.from_star(source_project)
@@ -112,7 +112,7 @@ def build_plan(source_project: Path, fork_dir: Path, *, reuse_alignment: bool = 
             raise CryosaurError(f'No {job_type} job found in {source_project}')
         return jobs[-1]
 
-    exclude_tilts = _last_job(graph, 'relion.excludetilts', source_project)
+    exclude_tilts_job = _last_job(graph, 'relion.excludetilts', source_project)
     align_job = _last_job(graph, 'relion.aligntiltseries.aretomo', source_project)
     source_reconstruct = _last_job(graph, 'relion.reconstructtomograms', source_project)
     source_denoise = _last_job(graph, 'relion.denoisetomo', source_project)
@@ -139,11 +139,21 @@ def build_plan(source_project: Path, fork_dir: Path, *, reuse_alignment: bool = 
     denoise_dir = fork_dir / 'Denoise' / 'job004'
     segment_dir = fork_dir / 'Segmentation' / 'job005'
 
+    # tilt_series_job: which job's per-tomogram tilt_series stars to read the micrograph list from
+    if exclude_tilts:
+        tilt_series_job = align_job
+    else:
+        upstream_jobs = graph.upstream(exclude_tilts_job.name)
+        if not upstream_jobs:
+            log.error(f'No job upstream of {exclude_tilts_job.name} in {source_project}')
+            raise CryosaurError(f'No job upstream of {exclude_tilts_job.name} in {source_project}')
+        tilt_series_job = upstream_jobs[-1]
+
     # Group micrographs by tomogram, in RELION's own deduplicated tilt order
-    destripe_input_dir = source_project / exclude_tilts.name / 'tilts'
+    destripe_input_dir = source_project / exclude_tilts_job.name / 'tilts'
     micrographs_by_tomogram: dict[str, list[Path]] = {}
     for name in tomogram_names:
-        tilt_series_star = source_project / align_job.name / 'tilt_series' / f'{name}.star'
+        tilt_series_star = source_project / tilt_series_job.name / 'tilt_series' / f'{name}.star'
         micrographs_by_tomogram[name] = [source_project / m for m in read_tomogram_micrographs(tilt_series_star)]
     log.progress(f'Mapped {sum(len(value) for value in micrographs_by_tomogram.values())} micrograph(s) to {len(micrographs_by_tomogram.keys())} tomogram(s)')
 

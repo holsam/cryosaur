@@ -32,6 +32,12 @@ ReuseAlignmentOption = Annotated[
     typer.Option('--reuse-alignment/--realign', help='Reuse the source project\'s existing AreTomo3 alignment parameters rather than recomputing them from the destriped stack.', rich_help_panel='Branch Options'),
 ]
 
+# -- Define ExcludeTilts option
+ExcludeTiltsOption = Annotated[
+    bool,
+    typer.Option('--exclude-tilts', help='Drop the tilts excluded by the source project\'s excludetilts job. Off by default: the fork stacks every tilt.', rich_help_panel='Branch Options'),
+]
+
 # -- _submit_single_job: adapts submit_plan's single_job path to run_command's expected shape
 def _submit_single_job(plan) -> dict[str, str]:
     return submit_plan(plan, single_job=True)
@@ -43,6 +49,7 @@ def destripe_lamella_command(
     fork_dir: ForkDirOption = None,
     dry_run: DryRunOption = False,
     reuse_alignment: ReuseAlignmentOption = True,
+    exclude_tilts: ExcludeTiltsOption = False,
     single_job: SingleJobOption = False,
     from_step: FromStepOption = None,
     only_step: OnlyStepOption = None,
@@ -53,7 +60,7 @@ def destripe_lamella_command(
     '''
     run_command(
         derive_fork_dir=derive_fork_dir,
-        build_plan=partial(build_plan, cluster_resources=cluster_resources, reuse_alignment=reuse_alignment),
+        build_plan=partial(build_plan, cluster_resources=cluster_resources, reuse_alignment=reuse_alignment, exclude_tilts=exclude_tilts),
         validate=validate,
         write_plan=write_plan,
         read_plan=read_plan,
