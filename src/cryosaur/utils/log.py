@@ -163,7 +163,7 @@ def resolve_log_path(
     if mode == 'overwrite':
         return path, True
     if mode == 'new':
-        return _next_available_path(path), True
+        return io._next_available_path(path), True
     if mode == 'append':
         write_header = not path.exists()
         return path, write_header
